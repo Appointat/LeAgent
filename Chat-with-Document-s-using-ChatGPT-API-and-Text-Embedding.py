@@ -2,7 +2,7 @@ import os
 import platform
 
 import openai
-#import chromadb
+import chromadb
 import langchain
 
 from langchain.embeddings.openai import OpenAIEmbeddings
