@@ -12,6 +12,8 @@ from langchain.llms import OpenAI
 from langchain.chains import ChatVectorDBChain
 from langchain.document_loaders import GutenbergLoader
 
+from google.colab import drive
+drive.mount('/content/drive')
 
 if __name__ == "__main__":
     print('Python: ', platform.python_version())
