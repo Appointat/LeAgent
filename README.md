@@ -4,7 +4,7 @@
 The short answer is that they convert documents that are over 100 or even 1,000 pages long into a numeric representation of data and related context (**vector embedding**) and store them in a vector search engine. When a user chats with the document (i.e., asks questions), the system searches and returns similar text to a question (i.e., chat) using an algorithm called **Approximate Nearest Neighbor search (ANN)**. It looks something like this.
 
 ![****[What is vector search?](https://www.elastic.co/cn/what-is/vector-search)****](https://user-images.githubusercontent.com/65004114/226753565-e2230d59-5750-4d77-840f-4f777441a4dc.png)
-****[What is vector search?](https://www.elastic.co/cn/what-is/vector-search)****
+Fig.1 ****[What is vector search?](https://www.elastic.co/cn/what-is/vector-search)****
 
 - Resources (images, documents, audio)
 - vector representation
