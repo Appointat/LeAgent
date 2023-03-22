@@ -44,6 +44,7 @@ tiktoken
 ```python
 $ pip install -r requirements.txt
 ```
+Note: administrator privileges may be required to install these packages.
 
 **Import Python Packages**
 
