@@ -33,7 +33,7 @@ We will be using the data from Project Gutenberg’s “[Romeo and Juliet by Wil
 
 **Installation of packages:**
 
-```python
+```powershell
 $ writefile requirements.txt
 openai
 chromadb
@@ -41,9 +41,10 @@ langchain
 tiktoken
 ```
 
-```python
+```powershell
 $ pip install -r requirements.txt
 ```
+
 Note: administrator privileges may be required to install these packages.
 
 **Import Python Packages**
@@ -121,54 +122,26 @@ To configure LangChain QA with Chroma, use the OpenAI GPT-3 model (*`model_name=
 romeoandjuliet_qa = ChatVectorDBChain.from_llm(OpenAI(temperature=0, model_name="gpt-3.5-turbo"), vectordb, return_source_documents=True)
 ```
 
-**Deployment of API**
+**Questions & Answers with “Romeo and Juliet” Book**
 
-```python
-import openai
-import time
+Generating questions and answers from the book is a straightforward process. To assess the accuracy of the results, I will be comparing the answers with those from SparkNotes.
 
-# Set up the API client
-openai.api_key = "YOUR_API_KEY"
+> *SparkNotes editors.* [“Romeo and Juliet” SparkNotes.com](https://www.sparknotes.com/shakespeare/romeojuliet/key-questions-and-answers/), *SparkNotes LLC, 2005*
+> 
 
-# Set up the prompt for the conversation
-prompt = "Let's have a conversation with an AI. Ask me anything!"
+**I hope you have enjoyed this simple tutorial. If you have any questions or comments, please provide them here.**
 
-# Set up the initial variables for the conversation
-conversation_history = ""
-end_conversation = False
+# **Resources**
 
-# Loop for the conversation
-while not end_conversation:
-    # Generate a response to the prompt using the GPT-3 API
-    response = openai.Completion.create(
-        engine="davinci",
-        prompt=prompt + conversation_history,
-        temperature=0.7,
-        max_tokens=150,
-        n=1,
-        stop=None,
-    )
-
-    # Extract the generated response text from the API response
-    message = response.choices[0].text.strip()
-
-    # Print the response to the console
-    print("AI: " + message)
-
-    # Check if the response indicates the end of the conversation
-    if "Goodbye" in message:
-        end_conversation = True
-    else:
-        # Get the user's response and add it to the conversation history
-        user_response = input("You: ")
-        conversation_history += "\nYou: " + user_response
-
-    # Add a delay to prevent exceeding API usage limits
-    time.sleep(1.0)
-```
-
-This code sets up a conversation loop where the user enters their message and the AI responds with a generated message. The **`prompt`** variable is used to set up the initial conversation prompt, and the **`conversation_history`** variable is used to keep track of the previous messages in the conversation.
-
-Inside the loop, the OpenAI API is used to generate a response to the current conversation prompt (**`prompt + conversation_history`**). The generated response is then printed to the console, and the user is prompted to enter their response. The user's response is added to the **`conversation_history`** variable, and the loop continues.
-
-The conversation ends when the AI generates a message containing the word "Goodbye". At that point, the **`end_conversation`** variable is set to **`True`**, and the loop exits. Note that there's a 1-second delay after each API call to prevent exceeding the API usage limits. Also, you need to replace "YOUR_API_KEY" with your actual API key.
+- [ChatPDF](https://www.chatpdf.com/)
+- [ArvixGPT](https://chrome.google.com/webstore/detail/arxivgpt/fbbfpcjhnnklhmncjickdipdlhoddjoh)
+- [GPT for Sheets and Docs](https://workspace.google.com/marketplace/app/gpt_for_sheets_and_docs/677318054654)
+- [What is vector search?](https://www.elastic.co/what-is/vector-search)
+- [Chroma](https://www.trychroma.com/)
+- [Elasticsearch](https://www.elastic.co/)
+- [LangChain](https://github.com/hwchase17/langchain)
+- [Romeo and Juliet by William Shakespeare](https://www.gutenberg.org/ebooks/1513)
+- [DuckDB](https://duckdb.org/)
+- [Apache Parquet](https://parquet.apache.org/)
+- [What are embeddings?](https://platform.openai.com/docs/guides/embeddings/what-are-embeddings)
+- [Sparknotes’ Romeo and Juliet: Questions & Answers](https://www.sparknotes.com/shakespeare/romeojuliet/key-questions-and-answers/)
