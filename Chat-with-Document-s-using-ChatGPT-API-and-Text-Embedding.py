@@ -41,7 +41,7 @@ from google.colab import drive
 drive.mount("/content/drive")
 
 # Set the OpenAI API key
-os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = "your api key"
 
 # Configure Chroma
 persist_directory = "/content/drive/My Drive/Colab Notebooks/chroma/romeo"
