@@ -76,3 +76,10 @@ romeoandjuliet_qa = ChatVectorDBChain.from_llm(
     vectordb,
     return_source_documents=True,
 )
+
+
+chat_history = ''
+query = "Have Romeo and Juliet spent the night together? Provide a verbose answer, referencing passages from the book."
+result = romeoandjuliet_qa({"question": query, "chat_history": chat_history})
+result["source_documents"] # Vector search engine
+result["answer"]
