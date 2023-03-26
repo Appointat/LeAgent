@@ -20,6 +20,7 @@ of 0 and the gpt-3.5-turbo model. """
 # Import required Python packages
 import os
 import platform
+import textwrap
 import openai
 import chromadb
 import langchain
@@ -37,7 +38,6 @@ print("Python: ", platform.python_version())
 
 # Mount Google Drive on Colab for saving data
 from google.colab import drive
-
 drive.mount("/content/drive")
 
 # Set the OpenAI API key
@@ -52,6 +52,15 @@ def get_gutenberg(url):
     loader = GutenbergLoader(url)
     data = loader.load()
     return data
+
+def markdown_to_python(markdown_text):
+    # Escape quotes and backslashes in the input
+    escaped_input = markdown_text.replace("\\", "\\\\").replace("'", "\\'")
+
+    # Generate the Python string
+    python_string = f"'{escaped_input}'"
+
+    return python_string
 
 
 # Load Romeo and Juliet from Project Gutenberg
@@ -82,4 +91,25 @@ chat_history = ''
 query = "Have Romeo and Juliet spent the night together? Provide a verbose answer, referencing passages from the book."
 result = romeoandjuliet_qa({"question": query, "chat_history": chat_history})
 result["source_documents"] # Vector search engine
+result["answer"]
+
+markdown_text = "Generating questions and answers from the book is a straightforward process. To assess the accuracy of the results, I will be comparing the answers with those from SparkNotes. > *SparkNotes editors.* [“Romeo and Juliet” SparkNotes.com](https://www.sparknotes.com/shakespeare/romeojuliet/key-questions-and-answers/), *SparkNotes LLC, 2005* >"
+query = markdown_to_python(markdown_text);
+result = romeoandjuliet_qa({"question": query, "chat_history": chat_history})
+chat_history = chat_history + result["answer"]
+result["answer"]
+
+##########
+
+# restart the conversation
+chat_history = [("hello", "hello")]
+
+markdown_text = "我得到了一个字符串，写python代码，需要将字符串自动识别，输出array[str]。中文回答"
+
+query = markdown_to_python(markdown_text)
+result = romeoandjuliet_qa({"question": query, "chat_history": chat_history})
+chat_history = chat_history + [(query, result["answer"])]
+formatted_history = "\n".join([f"Question: {q}\nAnswer: {a}" for q, a in chat_history])
+wrapped_history = textwrap.fill(formatted_history, width=120)
+print(wrapped_history + "\n")
 result["answer"]
