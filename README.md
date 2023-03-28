@@ -145,3 +145,15 @@ Generating questions and answers from the book is a straightforward process. To 
 - [Apache Parquet](https://parquet.apache.org/)
 - [What are embeddings?](https://platform.openai.com/docs/guides/embeddings/what-are-embeddings)
 - [Sparknotes’ Romeo and Juliet: Questions & Answers](https://www.sparknotes.com/shakespeare/romeojuliet/key-questions-and-answers/)
+
+
+# **Modules of LangChain**
+
+There are several main modules that LangChain provides support for. For each module we provide some examples to get started, how-to guides, reference docs, and conceptual guides. These modules are, in increasing order of complexity:
+
+- [Models](https://python.langchain.com/en/latest/modules/models.html): LLMs, Chat models, Text embedding models
+- [Prompts](https://python.langchain.com/en/latest/modules/prompts.html): LLM prompts templates, Chat prompt templates, Example selectors, Output Parers
+- [Indexes](https://python.langchain.com/en/latest/modules/indexes.html): The primary index and retrieval types supported by LangChain are currently centered around vector databases, and therefore a lot of the functionality we dive deep on those topics.
+- [Memory](https://python.langchain.com/en/latest/modules/memory.html): LangChain provides a standard interface for memory, a collection of memory implementations, and examples of chains/agents that use memory.
+- [Chains](https://python.langchain.com/en/latest/modules/chains.html): Chains go beyond just a single LLM call, and are sequences of calls (whether to an LLM or a different utility). LangChain provides a standard interface for chains, lots of integrations with other tools, and end-to-end chains for common applications.
+- [Agents](https://python.langchain.com/en/latest/modules/agents.html): Tools, Agents, Toolkits, Agent exucutor
