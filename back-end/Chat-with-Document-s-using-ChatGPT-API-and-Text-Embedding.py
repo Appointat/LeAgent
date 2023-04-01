@@ -113,3 +113,21 @@ formatted_history = "\n".join([f"Question: {q}\nAnswer: {a}" for q, a in chat_hi
 wrapped_history = textwrap.fill(formatted_history, width=120)
 print(wrapped_history + "\n")
 result["answer"]
+
+
+
+
+# restart the conversation
+chat_history = [("", "")]
+count = 0
+
+# while loop for typing
+while 1:
+  markdown_text = input("\nQuery[{}]:".format(count))
+  query = markdown_to_python(markdown_text)
+  result = romeoandjuliet_qa({"question": query, "chat_history": chat_history})
+  chat_history = chat_history + [(query, result["answer"])]
+  formatted_history = "\n".join([f"Question: {q}\nAnswer: {a}" for q, a in chat_history])
+  wrapped_history = textwrap.fill(formatted_history, width=120)
+  print(wrapped_history + "\n")
+  result["answer"]
