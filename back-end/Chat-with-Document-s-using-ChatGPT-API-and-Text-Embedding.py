@@ -17,10 +17,14 @@ of 0 and the gpt-3.5-turbo model. """
 #!pip install langchain
 #!pip install tiktoken
 
+
 # Import required Python packages
 import os
 import platform
 import textwrap
+import requests
+from typing import List
+
 import openai
 import chromadb
 import langchain
@@ -32,6 +36,11 @@ from langchain.text_splitter import TokenTextSplitter
 from langchain.llms import OpenAI
 from langchain.chains import ChatVectorDBChain
 from langchain.document_loaders import GutenbergLoader
+from langchain.docstore.document import Document
+from langchain.document_loaders.base import BaseLoader
+
+print('Python: ', platform.python_version())
+
 
 # Print the version of Python being used
 print("Python: ", platform.python_version())
@@ -48,6 +57,28 @@ persist_directory = "/content/drive/My Drive/Colab Notebooks/chroma/romeo"
 
 
 # Function to retrieve text from a Gutenberg URL
+class GutenbergLoader(BaseLoader):
+    """Loader that uses urllib to load .txt web files."""
+
+    def __init__(self, file_path: str):
+        """Initialize with file path."""
+        if not file_path.startswith("https://open-academy.github.io"):
+            raise ValueError("file path must start with 'https://open-academy.github.io'")
+
+        if not file_path.endswith(".md"):
+            raise ValueError("file path must end with '.md'")
+
+        self.file_path = file_path
+
+    def load(self) -> List[Document]:
+        """Load file."""
+        from urllib.request import urlopen
+
+        elements = urlopen(self.file_path)
+        text = "\n\n".join([str(el.decode("utf-8-sig")) for el in elements])
+        metadata = {"source": self.file_path}
+        return [Document(page_content=text, metadata=metadata)]
+
 def get_gutenberg(url):
     loader = GutenbergLoader(url)
     data = loader.load()
@@ -63,21 +94,23 @@ def markdown_to_python(markdown_text):
     return python_string
 
 
-# Load Romeo and Juliet from Project Gutenberg
-romeoandjuliet_data = get_gutenberg(
-    "https://www.gutenberg.org/cache/epub/1513/pg1513.txt"
-)
+# Downloading the text data from Project Open-academy
+modelDeployment_md = 'https://open-academy.github.io/machine-learning/_sources/machine-learning-productionization/model-deployment.md'
+modelDeployment_data = get_gutenberg(modelDeployment_md)
 
-# Split the text into chunks of 1000 tokens with 0 token overlap
+# Initializing a TokenTextSplitter object to split the text into chunks of 1000 tokens with 0 token overlap
 text_splitter = TokenTextSplitter(chunk_size=1000, chunk_overlap=0)
-romeoandjuliet_doc = text_splitter.split_documents(romeoandjuliet_data)
 
-# Generate OpenAI embeddings
+# Splitting the Romeo and Juliet text into chunks using the TokenTextSplitter object
+modelDeployment_doc = text_splitter.split_documents(modelDeployment_data)
+
+# Initializing an OpenAIEmbeddings object for word embeddings
 embeddings = OpenAIEmbeddings()
-vectordb = Chroma.from_documents(
-    romeoandjuliet_doc, embeddings, persist_directory=persist_directory
-)
-vectordb.persist()
+
+# Generating Chroma vectors from the text chunks using the OpenAIEmbeddings object and persisting them to disk
+vectordb = Chroma.from_documents(modelDeployment_doc, embeddings, persist_directory=persist_directory)
+# This can be used to explicitly persist the data to disk. It will also be called automatically when the object is destroyed.
+vectordb.persist() 
 
 # Configure LangChain QA with OpenAI as the LLM, using a temperature of 0, and the gpt-3.5-turbo model
 romeoandjuliet_qa = ChatVectorDBChain.from_llm(
