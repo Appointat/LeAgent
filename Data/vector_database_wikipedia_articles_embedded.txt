@@ -1,0 +1,1 @@
+https://cdn.openai.com/API/examples/data/vector_database_wikipedia_articles_embedded.zip
