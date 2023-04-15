@@ -1,0 +1,10 @@
+chromadb
+pinecone-client
+weaviate-client
+pymilvus
+qdrant-client
+redis
+typesense
+openai
+
+wget

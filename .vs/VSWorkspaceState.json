@@ -1,7 +1,8 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\OpenAI Example using Chroma"
   ],
-  "SelectedNode": "\\Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding.sln",
+  "SelectedNode": "\\OpenAI Example using Chroma\\using_vector_databases_for_embeddings_search.py",
   "PreviewInSolutionExplorer": false
 }
