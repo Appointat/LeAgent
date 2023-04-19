@@ -4,7 +4,7 @@ import gradio as gr
 import os
 import openai, subprocess
 
-openai.api_key = "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"
+openai.api_key = "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"
 
 messages = [{"role": "system", "content": 'YOUR ARE A BOT.'}]
 

@@ -7,18 +7,16 @@ from vectordb import ChatbotAgent
 # main function
 def main():	
 	## OpenAI API Key
-	with open('OpenAI_API_key.txt', 'r') as f:
+	with open(r'chatbot\OpenAI-API-key\OpenAI_API_key.txt', 'r') as f:
 		api_key = f.read().strip()
 	os.environ['OPENAI_API_KEY'] = api_key
 	print("OpenAI API Key Set\n")
 
 	## Configure Chroma
-	persist_directory = "vector-db-persist-directory\chroma\chatbot"
+	persist_directory = r'chatbot\vector-db-persist-directory\chroma\chatbot'
 
-	
-	## Load the data
 	# URLs of the files to be merged from Project Open-academy
-	_resources_path = "vector-db-persist-directory\resources\md_files.md"
+	_resources_path = r'chatbot\vector-db-persist-directory\resources\md_files.txt'
 	with open(_resources_path, 'r') as f:
 		lines = f.readlines()
 	_sources_urls = []
