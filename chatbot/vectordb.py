@@ -69,6 +69,12 @@ class ChatbotAgent:
 
         # Generating Chroma vectors from the text chunks using the OpenAIEmbeddings object and persisting them to disk
         self.vectordb = Chroma.from_documents(sources_data_doc, embeddings, persist_directory=self.persist_directory)
+        # Another method of the data preparation
+        self.vectordb_2 = Chroma.from_texts(
+            sources_data_doc, 
+            embeddings, 
+            metadatas = [{"source": str(i)} for i in range(len(sources_data_doc))], persist_directory=self.persist_directory
+        ).as_retriever()
 
         # This can be used to explicitly persist the data to disk. 
         # It will also be called automatically when the object is destroyed.
