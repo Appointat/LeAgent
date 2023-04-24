@@ -1,4 +1,6 @@
 ## Import Python Packages
+import imp
+from itertools import chain
 import os
 from urllib.parse import non_hierarchical
 import requests
@@ -13,6 +15,8 @@ from langchain.vectorstores import Chroma
 from langchain.text_splitter import TokenTextSplitter
 from langchain.llms import OpenAI
 from langchain.chains import ChatVectorDBChain
+from langchain.chains import RetrievalQA
+
 from langchain.document_loaders import GutenbergLoader
 from langchain.docstore.document import Document
 from langchain.document_loaders.base import BaseLoader
@@ -76,6 +80,13 @@ class ChatbotAgent:
             OpenAI(temperature=1.2, model_name="gpt-3.5-turbo"), 
             self.vectordb,
             return_source_documents=True
+        )
+        # another method
+        self.chatbot_qa_2 = RetrievalQA.from_chain_type(
+            llm=OpenAI(temperature=1.2, model_name="gpt-3.5-turbo"), 
+            #chain_type="map_reduce", 
+            chain_type="stuff",
+            retriever=self.vectordb.as_retriever()
         )
 
 
