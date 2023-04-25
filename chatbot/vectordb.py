@@ -53,19 +53,23 @@ class ChatbotAgent:
                 f.write(response.text)
                 f.write("\n")
 
+
         # Initialize the chat history
         self.chat_history = []
         self.query = []
         self.reslut = []
         self.count = 1 # count the number of times the chatbot has been called
 
+
         ## Load the data    
         self.sources_data = self.get_openacademysources(self.__sources_path)
         text_splitter = TokenTextSplitter(chunk_size=1000, chunk_overlap=0) # Initializing a TokenTextSplitter object
         sources_data_doc = text_splitter.split_documents(self.sources_data) # Splitting the text into chunks
 
+
         # Initializing an OpenAIEmbeddings object for word embeddings
         embeddings = OpenAIEmbeddings()
+
 
         # Generating Chroma vectors from the text chunks using the OpenAIEmbeddings object and persisting them to disk
         self.vectordb = Chroma.from_documents(sources_data_doc, embeddings, persist_directory=self.persist_directory)
@@ -80,8 +84,10 @@ class ChatbotAgent:
         # It will also be called automatically when the object is destroyed.
         self.vectordb.persist()
 
+
         # Find the similar text in vectordb with query
         self.similarity_doc_search = vectordb.similarity_search(self.query);
+
 
         # Configure LangChain QA
 		# chatbot_qa supports qa_prompt (prompt engineering) and qa (no prompt engineering)
@@ -90,11 +96,22 @@ class ChatbotAgent:
             self.vectordb,
             return_source_documents=True
         )
-        # another method
-        self.chatbot_qa_2 = RetrievalQA.from_chain_type(
+        # another method, chain type: stuff
+        self.chatbot_qa_retrieval_stuff_chain_type = RetrievalQA.from_chain_type(
             llm=OpenAI(temperature=1.2, model_name="gpt-3.5-turbo"), 
-            #chain_type="map_reduce", 
             chain_type="stuff",
+            retriever=self.vectordb.as_retriever()
+        )
+        # chain type: map_reduce
+        self.chatbot_qa_retrieval_stuff_chain_type = RetrievalQA.from_chain_type(
+            llm=OpenAI(temperature=1.2, model_name="gpt-3.5-turbo"), 
+            chain_type="map_reduce", 
+            retriever=self.vectordb.as_retriever()
+        )
+        # chain type: refine
+        self.chatbot_qa_retrieval_refine_chain_type = RetrievalQA.from_chain_type(
+            llm=OpenAI(temperature=1.2, model_name="gpt-3.5-turbo"), 
+            chain_type="refine", 
             retriever=self.vectordb.as_retriever()
         )
 
@@ -106,7 +123,6 @@ class ChatbotAgent:
         return data
 
 
-
     # Convert Markdown to Python
     def markdown_to_python(self, markdown_text):
         # Escape quotes and backslashes in the input
@@ -116,7 +132,6 @@ class ChatbotAgent:
         python_string = f"'{escaped_input}'"
 
         return python_string
-
 
 
     def chatbot_pipeline(self, query_pipeline, choose_GPTModel = False, updateChatHistory = False):
@@ -151,11 +166,12 @@ class ChatbotAgent:
         result_non_library_query = []
         result_official_keywords = []
         result_cheeting = []
-
-        
-
+        # 
+        #
+        #
         # Return the prompted query
         return result_prompted
+
 
 
 ## Convert Document to Embedding
@@ -168,6 +184,7 @@ class OpenAcademySourcesLoader(BaseLoader):
             raise ValueError("file path must end with '.md'")
 
         self.file_path = file_path
+        
 
     def load(self) -> List[Document]:
         """Load file."""
