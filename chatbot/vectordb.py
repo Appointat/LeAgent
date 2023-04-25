@@ -1,8 +1,5 @@
 ## Import Python Packages
-import imp
-from itertools import chain
 import os
-from urllib.parse import non_hierarchical
 import requests
 from typing import List
 
@@ -20,6 +17,9 @@ from langchain.chains import RetrievalQA
 from langchain.document_loaders import GutenbergLoader
 from langchain.docstore.document import Document
 from langchain.document_loaders.base import BaseLoader
+
+from langchain.prompts import PromptTemplate
+from langchain.chains.qa_with_sources import load_qa_with_sources_chain
 
 
 
@@ -96,14 +96,16 @@ class ChatbotAgent:
             self.vectordb,
             return_source_documents=True
         )
-        # another method, chain type: stuff
-        self.chatbot_qa_retrieval_stuff_chain_type = RetrievalQA.from_chain_type(
+        
+        # chain type: stuff
+        self.chatbot_qa_retrieval_map_reduce_chain_type = RetrievalQA.from_chain_type(
             llm=OpenAI(temperature=1.2, model_name="gpt-3.5-turbo"), 
-            chain_type="stuff",
+            chain_type="stuff", 
             retriever=self.vectordb.as_retriever()
         )
+        
         # chain type: map_reduce
-        self.chatbot_qa_retrieval_stuff_chain_type = RetrievalQA.from_chain_type(
+        self.chatbot_qa_retrieval_map_reduce_chain_type = RetrievalQA.from_chain_type(
             llm=OpenAI(temperature=1.2, model_name="gpt-3.5-turbo"), 
             chain_type="map_reduce", 
             retriever=self.vectordb.as_retriever()
@@ -114,6 +116,111 @@ class ChatbotAgent:
             chain_type="refine", 
             retriever=self.vectordb.as_retriever()
         )
+
+
+    # promtp chatbot, chain type: stuff
+    def chatbot_qa_retrieval_stuff_chain_type_with_prompt(self):
+        template = """Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES"). 
+            If you don't know the answer, just say that you don't know. Don't try to make up an answer.
+            ALWAYS return a "SOURCES" part in your answer.
+            Respond in English.
+
+            QUESTION: {question}
+            =========
+            {summaries}
+            =========
+            FINAL ANSWER IN ENGLISH:"""
+        PROMPT = PromptTemplate(templaten=template, input_variables=["summaries", "question"]) # parameter the prompt template
+        chain = load_qa_with_sources_chain(
+            llm=OpenAL(temperature=0, model_name="gpt-3.5-turbo"),
+            chain_type="stuff",
+            promt=PROMPT
+        )
+        return chain({"input_documents": self.vectordb, "question": self.query}, return_only_outputs=True)
+        # {'output_text': '\nI don't know what the president said about Justice Breyer.\nSOURCES: 30, 31, 33'}
+
+
+    # prompt chatbot, chain type: map_reduce
+    def chatbot_qa_retrieval_map_reduce_chain_type_with_prompt(self):
+        # question template
+        question_template = """Use the following portion of a long document to see if any of the text is relevant to answer the question. 
+            Return any relevant text in English.
+            {context}
+            Question: {question}
+            Relevant text, if any, in English:"""
+        QUESTION_PROMPT = PromptTemplate(templaten=question_template, input_variables=["context", "question"]) # parameter the prompt template
+
+        # answer/combine template
+        combine_template = """Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES"). 
+            If you don't know the answer, just say that you don't know. Don't try to make up an answer.
+            ALWAYS return a "SOURCES" part in your answer.
+            Respond in English.
+
+            QUESTION: {question}
+            =========
+            {summaries}
+            =========
+            FINAL ANSWER IN ENGLISH:"""
+        COMBINE_PROMPT = PromptTemplate(templaten=combine_template, input_variables=["summaries", "question"]) # parameter the prompt template
+
+        chain = load_qa_with_sources_chain(
+            # If batch_size is too high, it could cause rate limiting errors.
+            llm=OpenAL(batch_size=5, temperature=0, model_name="gpt-3.5-turbo"),
+            chain_type="map_reduce",
+            return_intermediate_steps=True,
+            question_prompt=QUESTION_PROMPT,
+            combine_prompt=COMBINE_PROMPT
+        )
+        return chain({"input_documents": self.vectordb, "question": self.query}, return_only_outputs=True)
+        #{'intermediate_steps': ["\nTonight I would like to honor someone who has dedicated his life to serving this country: Justice Stephen Breyer - an Army veteran, constitutional scholar, and outgoing justice of the United States Supreme Court. Justice Breyer, thank you for your service.",
+        #  ' Not relevant.',
+        #  ' Non relevant.',
+        #  " There is no relevant text."],
+        # 'output_text': ' I do not know the answer. SOURCES: 30, 31, 33, 20.'}
+
+
+    # prompt chatbot, chain type: refine
+    def chatbot_qa_retrieval_refine_chain_type_with_prompt(self):
+        # prompt refine template
+        REFINE_TEMPLATE = """
+            The original question is as follows: {question}
+            We have provided an existing answer, including sources: {existing_answer}
+            We have the opportunity to refine the existing answer
+            (only if needed) with some more context below.
+            ------------
+            {context_str}
+            ------------
+            Given the new context, refine the original answer to better
+            answer the question (in English)
+            If you do update it, please update the sources as well.
+            If the context isn't useful, return the original answer."""
+        refine_prompt = PromptTemplate(
+            input_variables=["question", "existing_anwser", "context_str"],
+            template=REFINE_TEMPLATE,
+        )
+
+        # prompt question template
+        QUESTION_TEMPLATE = """
+            Context information is below.
+            ---------------------
+            {context_str}
+            ---------------------
+            Given the context information and not prior knowledge,
+            answer the question in English: {question}"""
+        refine_prompt = PromptTemplate(
+            input_variables=["context_str", "question"],
+            template=QUESTION_TEMPLATE,
+        )
+
+        chain = load_qa_with_sources_chain(
+            # If batch_size is too high, it could cause rate limiting errors.
+            llm=OpenAL(batch_size=5, temperature=0, model_name="gpt-3.5-turbo"),
+            chain_type="refine",
+            return_intermediate_steps=True,
+            question_prompt=QUESTION_PROMPT,
+            refine_prompt=REFINE_PROMPT,
+        )
+        return chain({"input_documents": self.vectordb, "question": self.query}, return_only_outputs=True)
 
 
     # Get the data from the merged file
@@ -157,21 +264,11 @@ class ChatbotAgent:
             return result_pipeline
             
 
-    # Prompt the chatbot for stuff chain type
-    def promtp_engineering_for_stuff_chain_type(self):
-        template = """Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES"). 
-        If you don't know the answer, just say that you don't know. Don't try to make up an answer.
-        ALWAYS return a "SOURCES" part in your answer.
-        Respond in English.
 
-        QUESTION: {question}
-        =========
-        {summaries}
-        =========
-        FINAL ANSWER IN ENGLISH:"""
-        PROMPT = PromptTemplate(template=template, input_variables=["summaries", "question"])
-
-        self.chatbot_qa_retrieval_stuff_chain_type({"input_documents": self.vectordb, "question": self.query}, return_only_outputs=True)
+    # Prompt the chatbot for map_reduce chain type
+    def promtp_engineering_for_map_reduce_chain_type(self):
+        self.chatbot_qchatbot_qa_retrieval_map_reduce_chain_type({"input_documents": self.vectordb, "question": self.query}, return_only_outputs=True)
+        # {'output_text': ' The president thanked Justice Breyer for his service.\nSOURCES: 30-pl'}
 
 
     # Prompt the chatbot for non libary content
