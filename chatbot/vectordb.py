@@ -157,7 +157,24 @@ class ChatbotAgent:
             return result_pipeline
             
 
-    # Prompt the chatbot
+    # Prompt the chatbot for stuff chain type
+    def promtp_engineering_for_stuff_chain_type(self):
+        template = """Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES"). 
+        If you don't know the answer, just say that you don't know. Don't try to make up an answer.
+        ALWAYS return a "SOURCES" part in your answer.
+        Respond in English.
+
+        QUESTION: {question}
+        =========
+        {summaries}
+        =========
+        FINAL ANSWER IN ENGLISH:"""
+        PROMPT = PromptTemplate(template=template, input_variables=["summaries", "question"])
+
+        self.chatbot_qa_retrieval_stuff_chain_type({"input_documents": self.vectordb, "question": self.query}, return_only_outputs=True)
+
+
+    # Prompt the chatbot for non libary content
     def promtp_engineering_for_non_library_content(self, query): # please do not modify the value of query
         query_prompted = query + " Please provide a verbose answer."
 
