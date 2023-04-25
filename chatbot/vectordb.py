@@ -20,6 +20,7 @@ from langchain.document_loaders.base import BaseLoader
 
 from langchain.prompts import PromptTemplate
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
+from langchain.chains.question_answering import load_qa_chain
 
 
 
@@ -44,7 +45,7 @@ class ChatbotAgent:
 
         # Fetch the contents of each file and write to a local Markdown file
         self.__sources_path = '_sources_merged.md'
-        self.__default_url_prefix = "https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book"
+        self.__default_url_prefix = "https://open-academy.github.io/machine-learning/_sources/machine-learning-productionization/"
         with open(self.__sources_path, "w", encoding="utf-8") as f:
             for url in self.sources_urls:
                 if not url.startswith(self.__default_url_prefix):
@@ -56,8 +57,8 @@ class ChatbotAgent:
 
         # Initialize the chat history
         self.chat_history = []
-        self.query = []
-        self.reslut = []
+        self.query = ""
+        self.reslut = ""
         self.count = 1 # count the number of times the chatbot has been called
 
 
@@ -73,12 +74,13 @@ class ChatbotAgent:
 
         # Generating Chroma vectors from the text chunks using the OpenAIEmbeddings object and persisting them to disk
         self.vectordb = Chroma.from_documents(sources_data_doc, embeddings, persist_directory=self.persist_directory)
+        #self.vectordb = Chroma.from_texts(sources_data_doc, embeddings, metadatas=[{"source": str(i)} for i in range(len(sources_data_doc))]).as_retriever()
         # Another method of the data preparation
-        self.vectordb_2 = Chroma.from_texts(
-            sources_data_doc, 
-            embeddings, 
-            metadatas = [{"source": str(i)} for i in range(len(sources_data_doc))], persist_directory=self.persist_directory
-        ).as_retriever()
+        #self.vectordb_2 = Chroma.from_texts(
+        #    sources_data_doc, 
+        #    embeddings, 
+        #    metadatas = [{"source": str(i)} for i in range(len(sources_data_doc))], persist_directory=self.persist_directory
+        #).as_retriever()
 
         # This can be used to explicitly persist the data to disk. 
         # It will also be called automatically when the object is destroyed.
@@ -86,7 +88,10 @@ class ChatbotAgent:
 
 
         # Find the similar text in vectordb with query
-        self.similarity_doc_search = vectordb.similarity_search(self.query);
+        if self.query != "":
+            self.similarity_doc_search = self.vectordb.similarity_search_with_score(query=self.query)
+        else:
+            self.similarity_doc_search = ""
 
 
         # Configure LangChain QA
@@ -130,9 +135,9 @@ class ChatbotAgent:
             {summaries}
             =========
             FINAL ANSWER IN ENGLISH:"""
-        PROMPT = PromptTemplate(templaten=template, input_variables=["summaries", "question"]) # parameter the prompt template
+        PROMPT = PromptTemplate(template=template, input_variables=["summaries", "question"]) # parameter the prompt template
         chain = load_qa_with_sources_chain(
-            llm=OpenAL(temperature=0, model_name="gpt-3.5-turbo"),
+            llm=OpenAI(temperature=0, model_name="gpt-3.5-turbo"),
             chain_type="stuff",
             promt=PROMPT
         )
@@ -148,7 +153,7 @@ class ChatbotAgent:
             {context}
             Question: {question}
             Relevant text, if any, in English:"""
-        QUESTION_PROMPT = PromptTemplate(templaten=question_template, input_variables=["context", "question"]) # parameter the prompt template
+        QUESTION_PROMPT = PromptTemplate(template=question_template, input_variables=["context", "question"]) # parameter the prompt template
 
         # answer/combine template
         combine_template = """Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES"). 
@@ -161,28 +166,57 @@ class ChatbotAgent:
             {summaries}
             =========
             FINAL ANSWER IN ENGLISH:"""
-        COMBINE_PROMPT = PromptTemplate(templaten=combine_template, input_variables=["summaries", "question"]) # parameter the prompt template
+        COMBINE_PROMPT = PromptTemplate(template=combine_template, input_variables=["summaries", "question"]) # parameter the prompt template
 
-        chain = load_qa_with_sources_chain(
+        chain = load_qa_chain(
             # If batch_size is too high, it could cause rate limiting errors.
-            llm=OpenAL(batch_size=5, temperature=0, model_name="gpt-3.5-turbo"),
+            llm=OpenAI(batch_size=5, temperature=0, model_name="gpt-3.5-turbo"),
             chain_type="map_reduce",
             return_intermediate_steps=True,
             question_prompt=QUESTION_PROMPT,
             combine_prompt=COMBINE_PROMPT
         )
-        return chain({"input_documents": self.vectordb, "question": self.query}, return_only_outputs=True)
+        doc_relevent_tuple = self.vectordb.similarity_search_with_score(self.query)
+        #doc_relevent_ = self.vectordb.similarity_search(self.query)
+        doc_relevent = [doc[0] for doc in doc_relevent_tuple]
+        #doc_relevent = doc_relevent_tuple[1][0]
+        print((doc_relevent[1]))
+        print(type(doc_relevent[1]))
+        #doc = get_relevant_documents(self, )
+        return chain({"input_documents": doc_relevent[1], "question": self.query}, return_only_outputs=True)
         #{'intermediate_steps': ["\nTonight I would like to honor someone who has dedicated his life to serving this country: Justice Stephen Breyer - an Army veteran, constitutional scholar, and outgoing justice of the United States Supreme Court. Justice Breyer, thank you for your service.",
         #  ' Not relevant.',
         #  ' Non relevant.',
         #  " There is no relevant text."],
         # 'output_text': ' I do not know the answer. SOURCES: 30, 31, 33, 20.'}
 
+    def get_relevant_documents(self, query=str):
+        url, json, headers = self._create_request(query)
+        response = requests.post(url, json=json, headers=headers)
+        results = response.json()["results"][0]["results"]
+        docs = []
+        for d in results:
+            content = d.pop("text")
+            docs.append(Document(page_content=content, metadata=d))
+        return docs
 
     # prompt chatbot, chain type: refine
     def chatbot_qa_retrieval_refine_chain_type_with_prompt(self):
+        # prompt question template
+        initial_template = """
+            Context information is below.
+            ---------------------
+            {context_str}
+            ---------------------
+            Given the context information and not prior knowledge,
+            answer the question in English: {question}"""
+        INITIAL_TEMPLATE = PromptTemplate(
+            input_variables=["context_str", "question"],
+            template=initial_template,
+        )
+
         # prompt refine template
-        REFINE_TEMPLATE = """
+        refine_template = """
             The original question is as follows: {question}
             We have provided an existing answer, including sources: {existing_answer}
             We have the opportunity to refine the existing answer
@@ -194,31 +228,18 @@ class ChatbotAgent:
             answer the question (in English)
             If you do update it, please update the sources as well.
             If the context isn't useful, return the original answer."""
-        refine_prompt = PromptTemplate(
+        REFINE_TEMPLATE = PromptTemplate(
             input_variables=["question", "existing_anwser", "context_str"],
-            template=REFINE_TEMPLATE,
-        )
-
-        # prompt question template
-        QUESTION_TEMPLATE = """
-            Context information is below.
-            ---------------------
-            {context_str}
-            ---------------------
-            Given the context information and not prior knowledge,
-            answer the question in English: {question}"""
-        refine_prompt = PromptTemplate(
-            input_variables=["context_str", "question"],
-            template=QUESTION_TEMPLATE,
+            template=refine_template,
         )
 
         chain = load_qa_with_sources_chain(
             # If batch_size is too high, it could cause rate limiting errors.
-            llm=OpenAL(batch_size=5, temperature=0, model_name="gpt-3.5-turbo"),
+            llm=OpenAI(batch_size=5, temperature=0, model_name="gpt-3.5-turbo"),
             chain_type="refine",
             return_intermediate_steps=True,
-            question_prompt=QUESTION_PROMPT,
-            refine_prompt=REFINE_PROMPT,
+            question_prompt=INITIAL_TEMPLATE,
+            refine_prompt=REFINE_TEMPLATE,
         )
         return chain({"input_documents": self.vectordb, "question": self.query}, return_only_outputs=True)
 

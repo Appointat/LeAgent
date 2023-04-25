@@ -36,7 +36,10 @@ def main():
 		print("[{}]".format(chatbot_agent.count))
 		markdown_text = input("Query   : ")
 		chatbot_agent.query = chatbot_agent.markdown_to_python(markdown_text)
-		chatbot_agent.result = chatbot_agent.chatbot_qa({"question": chatbot_agent.query, "chat_history": chatbot_agent.chat_history})
+		if chatbot_agent.count == 0:
+			chatbot_agent.result = chatbot_agent.chatbot_qa({"question": chatbot_agent.query, "chat_history": chatbot_agent.chat_history})
+		else:
+			chatbot_agent.reslut = chatbot_agent.chatbot_qa_retrieval_map_reduce_chain_type_with_prompt()
 		chatbot_agent.count = chatbot_agent.count + 1
 		# update chat_history
 		chatbot_agent.chat_history = chatbot_agent.chat_history + [(chatbot_agent.query, chatbot_agent.result["answer"])]
