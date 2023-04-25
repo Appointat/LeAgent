@@ -80,6 +80,9 @@ class ChatbotAgent:
         # It will also be called automatically when the object is destroyed.
         self.vectordb.persist()
 
+        # Find the similar text in vectordb with query
+        self.similarity_doc_search = vectordb.similarity_search(self.query);
+
         # Configure LangChain QA
 		# chatbot_qa supports qa_prompt (prompt engineering) and qa (no prompt engineering)
         self.chatbot_qa = ChatVectorDBChain.from_llm(
