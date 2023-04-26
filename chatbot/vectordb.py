@@ -58,7 +58,7 @@ class ChatbotAgent:
         # Initialize the chat history
         self.chat_history = []
         self.query = ""
-        self.reslut = ""
+        self.result = ""
         self.count = 1 # count the number of times the chatbot has been called
 
 
@@ -168,22 +168,18 @@ class ChatbotAgent:
             FINAL ANSWER IN ENGLISH:"""
         COMBINE_PROMPT = PromptTemplate(template=combine_template, input_variables=["summaries", "question"]) # parameter the prompt template
 
-        chain = load_qa_chain(
+        chain = load_qa_with_sources_chain(
             # If batch_size is too high, it could cause rate limiting errors.
-            llm=OpenAI(batch_size=5, temperature=0, model_name="gpt-3.5-turbo"),
+            llm=OpenAI(temperature=0, model_name="gpt-3.5-turbo"),
             chain_type="map_reduce",
             return_intermediate_steps=True,
             question_prompt=QUESTION_PROMPT,
             combine_prompt=COMBINE_PROMPT
         )
-        doc_relevent_tuple = self.vectordb.similarity_search_with_score(self.query)
-        #doc_relevent_ = self.vectordb.similarity_search(self.query)
-        doc_relevent = [doc[0] for doc in doc_relevent_tuple]
-        #doc_relevent = doc_relevent_tuple[1][0]
-        print((doc_relevent[1]))
-        print(type(doc_relevent[1]))
-        #doc = get_relevant_documents(self, )
-        return chain({"input_documents": doc_relevent[1], "question": self.query}, return_only_outputs=True)
+        doc_relevant_tuple = self.vectordb.similarity_search_with_score(self.query)
+        docs_relevant = ([doc[0] for doc in doc_relevant_tuple])
+        print(docs_relevant[0].page_content)
+        return chain({"input_documents": [docs_relevant[0]], "question": self.query}, return_only_outputs=True)
         #{'intermediate_steps': ["\nTonight I would like to honor someone who has dedicated his life to serving this country: Justice Stephen Breyer - an Army veteran, constitutional scholar, and outgoing justice of the United States Supreme Court. Justice Breyer, thank you for your service.",
         #  ' Not relevant.',
         #  ' Non relevant.',
