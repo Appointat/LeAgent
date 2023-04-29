@@ -42,7 +42,8 @@ def main():
 		else:
 			output_chain = chatbot_agent.chatbot_qa_retrieval_map_reduce_chain_type_with_prompt()
 			anwser_1 = output_chain['output_text']
-			anwser_2 = chatbot_agent.chatbot_qa({"question": chatbot_agent.query, "chat_history": chatbot_agent.chat_history})["answer"]
+			#anwser_2 = chatbot_agent.chatbot_qa({"question": chatbot_agent.query, "chat_history": chatbot_agent.chat_history})["answer"]
+			anwser_2 = ""
 			prompt_query = '''
 				Query: 
 					{}

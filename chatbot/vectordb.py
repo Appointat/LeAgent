@@ -45,7 +45,7 @@ class ChatbotAgent:
 
         # Fetch the contents of each file and write to a local Markdown file
         self.__sources_path = '_sources_merged.md'
-        self.__default_url_prefix = "https://open-academy.github.io/machine-learning/_sources/machine-learning-productionization/"
+        self.__default_url_prefix = "https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book"
         with open(self.__sources_path, "w", encoding="utf-8") as f:
             for url in self.sources_urls:
                 if not url.startswith(self.__default_url_prefix):
@@ -156,7 +156,8 @@ class ChatbotAgent:
         QUESTION_PROMPT = PromptTemplate(template=question_template, input_variables=["context", "question"]) # parameter the prompt template
 
         # answer/combine template
-        combine_template = """Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES"). 
+        combine_template = """
+            Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES"). 
             If you don't know the answer, just say that you don't know. Don't try to make up an answer.
             ALWAYS return a "SOURCES" part in your answer.
             Respond in English.
@@ -178,7 +179,8 @@ class ChatbotAgent:
         )
         doc_relevant_tuple = self.vectordb.similarity_search_with_score(self.query)
         docs_relevant = ([doc[0] for doc in doc_relevant_tuple])
-        print(docs_relevant[0].page_content)
+        #print(docs_relevant[0].page_content)
+
         return chain({"input_documents": [docs_relevant[0]], "question": self.query}, return_only_outputs=True)
         #{'intermediate_steps': ["\nTonight I would like to honor someone who has dedicated his life to serving this country: Justice Stephen Breyer - an Army veteran, constitutional scholar, and outgoing justice of the United States Supreme Court. Justice Breyer, thank you for your service.",
         #  ' Not relevant.',
@@ -186,15 +188,6 @@ class ChatbotAgent:
         #  " There is no relevant text."],
         # 'output_text': ' I do not know the answer. SOURCES: 30, 31, 33, 20.'}
 
-    def get_relevant_documents(self, query=str):
-        url, json, headers = self._create_request(query)
-        response = requests.post(url, json=json, headers=headers)
-        results = response.json()["results"][0]["results"]
-        docs = []
-        for d in results:
-            content = d.pop("text")
-            docs.append(Document(page_content=content, metadata=d))
-        return docs
 
     # prompt chatbot, chain type: refine
     def chatbot_qa_retrieval_refine_chain_type_with_prompt(self):
