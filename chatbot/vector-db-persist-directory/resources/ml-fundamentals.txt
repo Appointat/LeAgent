@@ -28,4 +28,3 @@
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/ml-fundamentals/regression/managing-data.md',
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/ml-fundamentals/regression/regression-models-for-machine-learning.md',
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/ml-fundamentals/regression/tools-of-the-trade.md',
-

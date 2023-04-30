@@ -2,7 +2,7 @@
 import os
 from re import A
 from vectordb import ChatbotAgent
-
+from load_data import load_data
 
   #''' GitHub Copilot '''
 # main function
@@ -17,16 +17,7 @@ def main():
 	persist_directory = r'chatbot\vector-db-persist-directory\chroma\chatbot'
 
 	# URLs of the files to be merged from Project Open-academy
-	_resources_path = r'chatbot\vector-db-persist-directory\resources\md_files.txt'
-	with open(_resources_path, 'r') as f:
-		lines = f.readlines()
-	_sources_urls = []
-	for line in lines:
-		if line.startswith("'https://") and line.endswith("',\n"):
-			path_temp = line.strip()[1:-2]
-			_sources_urls.append(path_temp)
-	print("Sources URLs:")
-	print(_sources_urls)
+	_sources_urls = load_data()
 
 	## Initialize the ChatbotAgent
 	chatbot_agent = ChatbotAgent(_openai_api_key=os.environ["OPENAI_API_KEY"], _sources_urls=_sources_urls, _persist_directory=persist_directory)

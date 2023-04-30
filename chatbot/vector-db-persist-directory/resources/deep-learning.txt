@@ -12,4 +12,3 @@
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/deep-learning/NLP.md',
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/deep-learning/RNN.md',
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/deep-learning/time-series.md',
-

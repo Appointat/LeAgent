@@ -7,4 +7,3 @@
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/ml-advanced/clustering/clustering-models-for-machine-learning.md',
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/ml-advanced/clustering/introduction-to-clustering.md',
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/ml-advanced/clustering/k-means-clustering.md',
-

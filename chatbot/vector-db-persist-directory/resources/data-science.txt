@@ -25,4 +25,3 @@
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/data-science/working-with-data/pandas.md',
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/data-science/working-with-data/relational-databases.md',
 'https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book/data-science/working-with-data/working-with-data.md',
-
