@@ -44,7 +44,7 @@ class ChatbotAgent:
 
 
         # Fetch the contents of each file and write to a local Markdown file
-        self.__sources_path = '_sources_merged.md'
+        self.__sources_path = r'\chatbot\vector-db-persist-directory\sources_merged.md'
         self.__default_url_prefix = "https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book"
         with open(self.__sources_path, "w", encoding="utf-8") as f:
             for url in self.sources_urls:
