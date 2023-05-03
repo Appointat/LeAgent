@@ -60,7 +60,7 @@ wget.download(embeddings_url)
 
 import zipfile
 with zipfile.ZipFile("vector_database_wikipedia_articles_embedded.zip","r") as zip_ref:
-    zip_ref.extractall("../data")
+    zip_ref.extractall("../OpenAI Example using Chroma/data")
 
 article_df = pd.read_csv('../data/vector_database_wikipedia_articles_embedded.csv')
 
