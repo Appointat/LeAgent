@@ -15,6 +15,13 @@ The program then includes the returned text that is similar to a question (i.e.,
 
 On a side note, if you are worried about something like ChatGPT providing incorrect answers to a question, then you can point it to your organization’s knowledge base and provide answers from there. The accuracy of the answers will be as good as your knowledge base.
 
+
+## Instance of Chatbot using ChatGPT API and Text Embedding
+
+We provide an example which help you handle the related tech: the project ([repo](https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/tree/main/chatbot)) is a chatbot example based on GPT-3.5 API and ChromaDB. The chatbot covers conversation topics related to data science, machine learning, and deep learning. The project data comes from [Ocademy](We make an example which help you handle the related tech: the project ([repo](https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/tree/main/chatbot)) is a chatbot example based on GPT-3.5 API and ChromaDB. The chatbot covers conversation topics related to data science, machine learning, and deep learning. The project data comes from an open-source project and is continually updated to optimize and improve the project, including using a more appropriate database, adding more user-friendly prompts, and increasing the number of GPT channels, among others. In the near future, we plan to deploy the chatbot project to AWS and combine it with a data science education website to provide users with more services.
+) (an open-source project) and is continually updated to optimize and improve the project, including using a more appropriate database, adding more user-friendly prompts, and increasing the number of GPT channels, among others. In the near future, we plan to deploy the chatbot project to AWS and combine it with a data science education website to provide users with more services.
+
+
 ## Tutorial
 
 ### Tools
