@@ -4,7 +4,6 @@ import requests
 from typing import List
 
 import openai
-import chromadb
 import langchain
 
 from langchain.embeddings.openai import OpenAIEmbeddings
@@ -22,6 +21,8 @@ from langchain.prompts import PromptTemplate
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
 from langchain.chains.question_answering import load_qa_chain
 
+import qdrant_client
+from qdrant_client.http import models as rest
 
 
 
@@ -53,7 +54,70 @@ class ChatbotAgent:
                 response = requests.get(url, verify=False)
                 f.write(response.text)
                 f.write("\n")
+        # Idex data
+        vector_size = 1000
+        qdrant.recreate_collection(
+            collection_name='Articles',
+            vectors_config={
+                'title': rest.VectorParams(
+                    distance=rest.Distance.COSINE,
+                    size=vector_size,
+                ),
+                'content': rest.VectorParams(
+                    distance=rest.Distance.COSINE,
+                    size=vector_size,
+                ),
+                'link': rest.VectorParams(
+                    distance=rest.Distance.COSINE,
+                    size=vector_size,
+                ),
+                'inline_link': rest.VectorParams(
+                    distance=rest.DIstance.COSINE,
+                    size=vector_size,
+                )
+            }
+        )
 
+        qdrant.upsert(
+            collection_name='Articles',
+            points=[
+                rest.PointStruct(
+                    id=k,
+                    vector={
+                        'title': v['title_vector'],
+                        'content': v['content_vector'],
+                        'link': v['link_vector'],
+                        'inline_link': v['inline_link_vector'],
+                    },
+                    payload=v.to_dict(),
+                )
+                for k, v in article_df.iterrows()
+            ],
+        )
+
+        # search agent based on Qdrant
+        def query_qdrant(query, collection_name, vector_name='title', top_k=20):
+            
+            # Creates embedding vector from user query
+            embedded_query = openai.Embedding.create(
+                input=query,
+                model=EMBEDDING_MODEL, # EMBEDDING_MODEL = "text-embedding-ada-002"
+            )['data'][0]['embedding']
+            print("embedded_qury: ".format(embedded_qury))
+    
+            query_results = qdrant.search(
+                collection_name=collection_name,
+                query_vector=(
+                    vector_name, embedded_query
+                ),
+                limit=top_k,
+            )
+
+        return query_results
+
+
+        # Check the collection size to make sure all the points have been stored
+        pirnt("\nNumber of the collection: ".format(qdrant.count(collection_name='Articles')))
 
         # Initialize the chat history
         self.chat_history = []
