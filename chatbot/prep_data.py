@@ -33,65 +33,68 @@ def load_data():
 
 
 def prep_data():
-	book_data = []
+	"""
+	This function prepares the book data by extracting content from Markdown files and their inline links.
 
-	input_directory = r'chatbot\vector-db-persist-directory\resources'
+	Returns:
+		list: A list of book data, where each item is a dictionary representing a book with keys 'id', 'title', 'content',
+		'link', 'inline_link_vector', 'inline_title_vector', and 'inline_content_vector'.
+	"""
+	book_data = [] # Create an empty list to store book data
+	id = 0 # Set an initial value for the ID counter
+
+	input_directory = r'chatbot\vector-db-persist-directory\resources' # Set the defualt directory
 	
 	for file in os.listdir(input_directory):
 		if file.endswith('.txt'):
+			id = id + 1
 			with open(os.path.join(input_directory, file), 'r') as f:
 				txt_content = f.read()
 				# Link all Markdown files extracted from the text file (Form A)
 				md_links = re.findall(r"'(https://[\w\d\-_/.]+\.md)',", txt_content)
 
-				for link in md_links:
-					md_file = link.rsplit('/', 1)[-1]
-					title = md_file[:-3]  # Remove the .md suffix
+			for link in md_links:
+				md_file = link.rsplit('/', 1)[-1]
+				md_title = md_file[:-3]  # Remove the .md suffix
 
-					# Get the contents of the .md file
-					md_content_request = requests.get(link.replace('github.com', 'raw.githubusercontent.com').replace('/tree', ''))
-					md_content = md_content_request.text if md_content_request.status_code == 200 else ''
+				# Get the contents of the .md file
+				md_content_request = requests.get(link.replace('github.com', 'raw.githubusercontent.com').replace('/tree', ''))
+				md_content = md_content_request.text if md_content_request.status_code == 200 else ''
 
-					# Get the inline contents of the .md file
-					inline_links.update({inline_title: []})
-                    inline_links_list = re.findall(r'\[(.*?)\]\((.*?)\)', md_content)
-					for inline_link in inline_links_list:
-                        if inline_link[1].endswith('.md'): 
-                            inline_title = inline_link[1].rsplit('/', 1)[-1][:-3]
-                            inline_content_request = requests.get(inline_link[1].replace('github.com', 'raw.githubusercontent.com').replace('/tree', ''))
-                            inline_content = inline_content_request.text if inline_content_request.status_code == 200 else ''
-                            inline_links[title].append(inline_title)
-                            inline_links.update({inline_title: []})
-                            inline_content.update({inline_title: inline_content})
+				# Get the inline contents of the .md file
+				inline_title_vector = []
+				inline_content_vecor = []
+				inline_link_vector = []
+				inline_links_list = re.findall(r'\[(.*?)\]\((http.*?)\)', md_content)
 
-					book_data.append({
-						'id': len(book_data) + 1,
-						'title': title,
-						'content': md_content,
-						'inline_content': inline_content,
-						'link': link,
-						'inline_link': link + '-inline',
-						'title_vector': generate_vector(),
-						'content_vector': generate_vector(),
-						'link_vector': generate_vector(),
-						'inline_link_vector': generate_vector(),
-					})
+				for inline_title, inline_link in inline_links_list:
+					inline_content_request = requests.get(inline_link.replace('github.com', 'raw.githubusercontent.com').replace('/tree', ''))
+					inline_content = inline_content_request.text if inline_content_request.status_code == 200 else ''
+					inline_title_vector.append(inline_title)
+					inline_content_vecor.append(inline_content)
+					inline_link_vector.append(inline_link)
+
+				# Add the book data to the list
+				book_data.append({
+					'id': id,
+					'title': md_title,
+					'content': md_content,
+					'link': link,
+					'inline_link_vector': inline_link_vector,
+					'inline_title_vector': inline_title_vector,
+					'inline_content_vector': inline_content_vecor,
+				})
 
 	print(book_data.content['CNN'])
-
-
-
-def generate_vector():
-    return [0.1, 0.2, ...]
-
+	return book_data
 
 
 def select_chapter():
 	# Add a function to select a chapter
-	conclusion_for_data_science = '''
+	conclusion_for_data_science = """
 		
-	'''
-	conclusion_for_deep_learning = '''
+	"""
+	conclusion_for_deep_learning = """
 		About deep learning, the books talks about different topics and applications of deep learning, which is a branch of machine learning that uses artificial neural networks to learn from data and perform tasks. Some of the topics and applications covered in the book are:
 
 		- AutoEncoder: A type of neural network that learns to compress and reconstruct data, such as images or text, in an unsupervised manner. Autoencoders can be used for dimensionality reduction, denoising, anomaly detection, etc.
@@ -107,8 +110,8 @@ def select_chapter():
 		- NLP: Natural Language Processing, a field of computer science that deals with understanding and generating natural language using deep learning or other methods. NLP can be used for sentiment analysis, machine translation, question answering, etc.
 		- RNN: Recurrent Neural Network, a type of neural network that can process sequential data by having loops or connections between its hidden units. RNN can learn from temporal patterns and context information. RNN can be used for natural language processing, speech recognition, time series analysis, etc.
 		time-series: A tutorial on how to use RNNs for time series analysis tasks, such as forecasting or anomaly detection. It also explains how to use TensorFlow and Keras libraries to build and train RNN models in Python.
-		'''
-	conclusion_for_machine_learning_productionization = '''
+		"""
+	conclusion_for_machine_learning_productionization = """
 		About machine learning productionization, the book talks about different topics and applications of machine learning, which is a branch of artificial intelligence that uses statistical techniques to give computers the ability to learn from data without being explicitly programmed. 
 		Machine learning productionization is the process of developing and integrating machine learning models into a live setting where they generate value for the business, and then continuously improving them. 
 		This chapter introduces the concept of machine learning productionization and its challenges. It also describes the machine learning productionization life cycle and some best practices for building production-ready machine learning systems.
@@ -118,8 +121,8 @@ def select_chapter():
 		- Data engineering: This chapter covers how to collect, store, process, and analyze data for machine learning. It also discusses how to handle data quality issues, data drift, and data privacy.
 		- Model training and evaluation: This chapter covers how to train, evaluate, and debug machine learning models. It also discusses how to handle model complexity, overfitting, underfitting, and bias-variance trade-off.
 		- Model deployment: This chapter covers how to deploy machine learning models to production environments. It also discusses how to choose the appropriate deployment pattern, infrastructure, and platform for different use cases. It also covers how to manage and deliver models using model registries and pipelines.
-	'''
-	conclusion_for_ml_advanced = '''
+	"""
+	conclusion_for_ml_advanced = """
 		About advanced machine learning topics, the book delves into various methods and techniques that expand on traditional machine learning approaches. Advanced machine learning goes beyond the basics, employing more sophisticated techniques to improve model performance and better understand complex data. The book covers the following topics and applications:
 		
 		- Ensemble Learning: This chapter discusses ensemble methods that combine multiple weak learners to create a strong learner. It introduces bagging, boosting, and stacking techniques to improve model performance by reducing variance and increasing accuracy.
@@ -128,8 +131,8 @@ def select_chapter():
 		- Model Selection: This chapter emphasizes the importance of model selection for identifying the best model that generalizes well to new data. It covers cross-validation, hyperparameter tuning, and model comparison techniques to optimize performance and select the most suitable model.
 		- Unsupervised Learning: This chapter delves into unsupervised learning algorithms that can extract patterns and structures from data without labeled information. It discusses dimensionality reduction and clustering techniques for discovering underlying data structures and reducing feature space.
 		- Clustering: This chapter discusses clustering techniques that can discover underlying structures in data and partition it into distinct groups. It covers popular clustering algorithms, such as K-Means, Hierarchical Clustering, and DBSCAN, which group similar data points based on distance or density metrics.
-	'''
-	conclusion_for_ml_fundamentals = '''
+	"""
+	conclusion_for_ml_fundamentals = """
 		The chapter covers essential machine learning concepts, techniques, and applications, providing a solid foundation for understanding the field. It introduces classification, regression, and neural networks, along with parameter optimization and fairness in machine learning.
 
 		The chapter emphasizes the importance of understanding the problem and selecting appropriate models and techniques. It discusses linear and polynomial regression, logistic regression, and various classification algorithms, including decision trees, support vector machines, and ensemble methods.
@@ -139,8 +142,7 @@ def select_chapter():
 		It also addresses parameter optimization techniques, including gradient descent and loss functions, to fine-tune models for better performance.
 
 		Lastly, it highlights the importance of fairness and ethics in machine learning, encouraging practitioners to consider the impact of their models on society.
-
-	'''
+	"""
 	chapter_introduction = {
 		"[data science]": conclusion_for_data_science,
 		"[deep learning]": conclusion_for_deep_learning,
