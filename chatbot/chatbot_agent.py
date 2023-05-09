@@ -24,6 +24,8 @@ from langchain.chains.question_answering import load_qa_chain
 import qdrant_client
 from qdrant_client.http import models as rest
 
+from prep_data import prep_data
+
 
 
 ## chatbot agent class
@@ -54,8 +56,13 @@ class ChatbotAgent:
                 response = requests.get(url, verify=False)
                 f.write(response.text)
                 f.write("\n")
+
+        # DataFrame: A pandas DataFrame of book data, with columns 'id', 'title', 'content',
+        # 'link', 'inline_link_list', 'inline_title_list', and 'inline_content_list'.
+       self.book_data_df = prep_data()
+
         # Idex data
-        vector_size = 1000
+        vector_size = len(self.book_data_df)
         qdrant.recreate_collection(
             collection_name='Articles',
             vectors_config={
@@ -71,10 +78,18 @@ class ChatbotAgent:
                     distance=rest.Distance.COSINE,
                     size=vector_size,
                 ),
-                'inline_link': rest.VectorParams(
+                'inline_title_vector': rest.VectorParams(
                     distance=rest.DIstance.COSINE,
                     size=vector_size,
-                )
+                ),
+                 'inline_content_vector': rest.VectorParams(
+                    distance=rest.DIstance.COSINE,
+                    size=vector_size,
+                ),
+                 'inline_link_vector': rest.VectorParams(
+                    distance=rest.DIstance.COSINE,
+                    size=vector_size,
+                ),
             }
         )
 
@@ -82,16 +97,18 @@ class ChatbotAgent:
             collection_name='Articles',
             points=[
                 rest.PointStruct(
-                    id=k,
+                    id=row['id'],
                     vector={
-                        'title': v['title_vector'],
-                        'content': v['content_vector'],
-                        'link': v['link_vector'],
-                        'inline_link': v['inline_link_vector'],
+                        'title': row['title'],
+                        'content': row['content'],
+                        'link': row['link'],
+                        'inline_title_vector': row['inline_title_list'],
+                        'inline_content_vector': row['inline_content_list'],
+                        'inline_link_vector': row['inline_link_list'],
                     },
-                    payload=v.to_dict(),
+                    payload=row.to_dict(),
                 )
-                for k, v in article_df.iterrows()
+                for _, row in article_df.iterrows()
             ],
         )
 

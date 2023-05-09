@@ -34,11 +34,11 @@ def load_data():
 
 def prep_data():
 	"""
-	This function prepares the book data by extracting content from Markdown files and their inline links.
+    This function prepares the book data by extracting content from Markdown files and their inline links.
 
 	Returns:
-		list: A list of book data, where each item is a dictionary representing a book with keys 'id', 'title', 'content',
-		'link', 'inline_link_vector', 'inline_title_vector', and 'inline_content_vector'.
+        DataFrame: A pandas DataFrame of book data, with columns 'id', 'title', 'content',
+        'link', 'inline_link_list', 'inline_title_list', and 'inline_content_list'.
 	"""
 	book_data = [] # Create an empty list to store book data
 	id = 0 # Set an initial value for the ID counter
@@ -62,31 +62,33 @@ def prep_data():
 				md_content = md_content_request.text if md_content_request.status_code == 200 else ''
 
 				# Get the inline contents of the .md file
-				inline_title_vector = []
-				inline_content_vecor = []
-				inline_link_vector = []
+				inline_title_list = []
+				inline_content_list = []
+				inline_link_list = []
 				inline_links_list = re.findall(r'\[(.*?)\]\((http.*?)\)', md_content)
 
 				for inline_title, inline_link in inline_links_list:
 					inline_content_request = requests.get(inline_link.replace('github.com', 'raw.githubusercontent.com').replace('/tree', ''))
 					inline_content = inline_content_request.text if inline_content_request.status_code == 200 else ''
-					inline_title_vector.append(inline_title)
+					inline_title_list.append(inline_title)
 					inline_content_vecor.append(inline_content)
-					inline_link_vector.append(inline_link)
+					inline_link_list.append(inline_link)
 
 				# Add the book data to the list
 				book_data.append({
 					'id': id,
 					'title': md_title,
-					'content': md_content,
+					'content': md_content, # Further optimization can be done by splitting files to reduce text volume
 					'link': link,
-					'inline_link_vector': inline_link_vector,
-					'inline_title_vector': inline_title_vector,
-					'inline_content_vector': inline_content_vecor,
+					'inline_title_list': inline_title_list,
+					'inline_content_list': inline_content_vecor,
+					'inline_link_list': inline_link_list,
 				})
 
-	print(book_data.content['CNN'])
-	return book_data
+	# Convert the book_data list into a pandas DataFrame
+	book_data_df = pd.DataFrame(book_data)
+	print(book_data_df.loc[book_data_df['title'] == 'CNN', 'content'].values[0])
+	return book_data_df
 
 
 def select_chapter():
@@ -94,6 +96,7 @@ def select_chapter():
 	conclusion_for_data_science = """
 		
 	"""
+
 	conclusion_for_deep_learning = """
 		About deep learning, the books talks about different topics and applications of deep learning, which is a branch of machine learning that uses artificial neural networks to learn from data and perform tasks. Some of the topics and applications covered in the book are:
 
@@ -110,7 +113,8 @@ def select_chapter():
 		- NLP: Natural Language Processing, a field of computer science that deals with understanding and generating natural language using deep learning or other methods. NLP can be used for sentiment analysis, machine translation, question answering, etc.
 		- RNN: Recurrent Neural Network, a type of neural network that can process sequential data by having loops or connections between its hidden units. RNN can learn from temporal patterns and context information. RNN can be used for natural language processing, speech recognition, time series analysis, etc.
 		time-series: A tutorial on how to use RNNs for time series analysis tasks, such as forecasting or anomaly detection. It also explains how to use TensorFlow and Keras libraries to build and train RNN models in Python.
-		"""
+	"""
+
 	conclusion_for_machine_learning_productionization = """
 		About machine learning productionization, the book talks about different topics and applications of machine learning, which is a branch of artificial intelligence that uses statistical techniques to give computers the ability to learn from data without being explicitly programmed. 
 		Machine learning productionization is the process of developing and integrating machine learning models into a live setting where they generate value for the business, and then continuously improving them. 
@@ -122,6 +126,7 @@ def select_chapter():
 		- Model training and evaluation: This chapter covers how to train, evaluate, and debug machine learning models. It also discusses how to handle model complexity, overfitting, underfitting, and bias-variance trade-off.
 		- Model deployment: This chapter covers how to deploy machine learning models to production environments. It also discusses how to choose the appropriate deployment pattern, infrastructure, and platform for different use cases. It also covers how to manage and deliver models using model registries and pipelines.
 	"""
+
 	conclusion_for_ml_advanced = """
 		About advanced machine learning topics, the book delves into various methods and techniques that expand on traditional machine learning approaches. Advanced machine learning goes beyond the basics, employing more sophisticated techniques to improve model performance and better understand complex data. The book covers the following topics and applications:
 		
@@ -132,6 +137,7 @@ def select_chapter():
 		- Unsupervised Learning: This chapter delves into unsupervised learning algorithms that can extract patterns and structures from data without labeled information. It discusses dimensionality reduction and clustering techniques for discovering underlying data structures and reducing feature space.
 		- Clustering: This chapter discusses clustering techniques that can discover underlying structures in data and partition it into distinct groups. It covers popular clustering algorithms, such as K-Means, Hierarchical Clustering, and DBSCAN, which group similar data points based on distance or density metrics.
 	"""
+
 	conclusion_for_ml_fundamentals = """
 		The chapter covers essential machine learning concepts, techniques, and applications, providing a solid foundation for understanding the field. It introduces classification, regression, and neural networks, along with parameter optimization and fairness in machine learning.
 
@@ -143,6 +149,7 @@ def select_chapter():
 
 		Lastly, it highlights the importance of fairness and ethics in machine learning, encouraging practitioners to consider the impact of their models on society.
 	"""
+
 	chapter_introduction = {
 		"[data science]": conclusion_for_data_science,
 		"[deep learning]": conclusion_for_deep_learning,
