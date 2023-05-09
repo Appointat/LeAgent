@@ -30,26 +30,20 @@ class ChatbotAgent:
         Initializes an instance of the ChatbotAgent class.
 
         :param openai_api_key (str): OpenAI API key.
-	:param sources_urls (List[str]): URLs of the files to be merged from Project Open-academy.
-	:param persist_directory (str): Directory where the Chroma vectors will be persisted.
+		:param sources_urls (List[str]): URLs of the files to be merged from Project Open-academy.
+		:param persist_directory (str): Directory where the Chroma vectors will be persisted.
         """
         # Set OpenAI API key.
         self._openai_api_key = openai_api_key
         os.environ["OPENAI_API_KEY"] = self._openai_api_key
-        self.sources_urls = sources_urls
-        self.persist_directory = persist_directory
+        self._sources_urls = sources_urls
+        self._persist_directory = persist_directory
 
 
         # Fetch the contents of each file and write to a local Markdown file.
-        self._sources_path = r'\chatbot\vector-db-persist-directory\sources_merged.md'
-        self._default_url_prefix = "https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book"
-        with open(self._sources_path, "w", encoding="utf-8") as f:
-            for url in self.sources_urls:
-                if not url.startswith(self._default_url_prefix):
-                    raise ValueError(f"file path must start with '{self._default_url_prefix}'")
-                response = requests.get(url, verify=False)
-                f.write(response.text)
-                f.write("\n")
+		self._sources_path = r'\chatbot\vector-db-persist-directory\sources_merged.md'
+		self._default_url_prefix = "https://github.com/open-academy/machine-learning/tree/main/open-machine-learning-jupyter-book"
+		fetch_and_write_md_contents(sources_urls=self._sources_urls, sources_path=self._sources_path, default_url_prefix=self._default_url_prefix)
 
 
         # Initialize the chat history.
@@ -60,7 +54,7 @@ class ChatbotAgent:
 
 
         # Load the data.
-        self.sources_data = self.get_openacademysources(self._sources_path)
+        self.sources_data = self.get_embeddings(self._sources_path)
         text_splitter = TokenTextSplitter(chunk_size=1000, chunk_overlap=0)  # Initialize a TokenTextSplitter object.
         sources_data_doc = text_splitter.split_documents(self.sources_data)  # Split the text into chunks.
 
@@ -70,7 +64,7 @@ class ChatbotAgent:
 
 
         # Generating Chroma vectors from the text chunks using the OpenAIEmbeddings object and persisting them to disk.
-        self.vectordb = Chroma.from_documents(sources_data_doc, embeddings, persist_directory=self.persist_directory)
+        self.vectordb = Chroma.from_documents(sources_data_doc, embeddings, persist_directory=self._persist_directory)
         self.vectordb.persist()
 
 
@@ -82,7 +76,7 @@ class ChatbotAgent:
 
 
         # Configure LangChain QA.
-	# The chatbot_qa supports qa_prompt (prompt engineering) and qa (no prompt engineering).
+		# The chatbot_qa supports qa_prompt (prompt engineering) and qa (no prompt engineering).
         self.chatbot_qa = ChatVectorDBChain.from_llm(
             OpenAI(temperature=1.2, model_name="gpt-3.5-turbo"), 
             self.vectordb,
@@ -112,9 +106,6 @@ class ChatbotAgent:
 
     # Promtp the chatbot, chain type: stuff.
     def chatbot_qa_retrieval_stuff_chain_type_with_prompt(self):
-	"""
-	
-	"""
         template = """Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES"). 
             If you don't know the answer, just say that you don't know. Don't try to make up an answer.
             ALWAYS return a "SOURCES" part in your answer.
@@ -217,8 +208,8 @@ class ChatbotAgent:
 
 
     # Get the data from the merged file.
-    def get_openacademysources(self, path):
-        loader = OpenAcademySourcesLoader(path)
+    def get_Embeddings(self, path):
+        loader = EmbeddingsLoader(path)
         data = loader.load()
         return data
 
@@ -232,6 +223,17 @@ class ChatbotAgent:
         python_string = f"'{escaped_input}'"
 
         return python_string
+
+
+    # Fetch the contents of each file from the provided URLs and write to a local Markdown file.
+    def fetch_and_write_md_contents(sources_urls, sources_path, default_url_prefix):
+		with open(sources_path, "w", encoding="utf-8") as f:
+			for url in sources_urls:
+				if not url.startswith(default_url_prefix):
+					raise ValueError(f"file path must start with '{default_url_prefix}'")
+				response = requests.get(url, verify=False)
+				f.write(response.text)
+				f.write("\n")
 
 
     def chatbot_pipeline(self, query_pipeline, choose_GPTModel = False, updateChatHistory = False):
@@ -278,9 +280,12 @@ class ChatbotAgent:
 
 
 # Convert Document to Embedding.
-class OpenAcademySourcesLoader(BaseLoader):
-    """Loader that uses urllib to load .txt web files."""
-
+class EmbeddingsLoader(BaseLoader):
+    """
+    Loader that uses urllib to load .txt web files.
+    
+    :param BaseLoader: a specifyed class in ChromaDB
+    """
     def __init__(self, file_path: str):
         """Initialize with file path."""
         if not file_path.endswith(".md"):
