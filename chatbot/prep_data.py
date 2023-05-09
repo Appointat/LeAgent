@@ -71,7 +71,7 @@ def prep_data():
 					inline_content_request = requests.get(inline_link.replace('github.com', 'raw.githubusercontent.com').replace('/tree', ''))
 					inline_content = inline_content_request.text if inline_content_request.status_code == 200 else ''
 					inline_title_list.append(inline_title)
-					inline_content_vecor.append(inline_content)
+					inline_content_list.append(inline_content)
 					inline_link_list.append(inline_link)
 
 				# Add the book data to the list
@@ -81,7 +81,7 @@ def prep_data():
 					'content': md_content, # Further optimization can be done by splitting files to reduce text volume
 					'link': link,
 					'inline_title_list': inline_title_list,
-					'inline_content_list': inline_content_vecor,
+					'inline_content_list': inline_content_list,
 					'inline_link_list': inline_link_list,
 				})
 
