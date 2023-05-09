@@ -50,7 +50,7 @@ def prep_data():
 			id = id + 1
 			with open(os.path.join(input_directory, file), 'r') as f:
 				txt_content = f.read()
-				# Link all Markdown files extracted from the text file (Form A)
+				# Link all Markdown files extracted from the text file
 				md_links = re.findall(r"'(https://[\w\d\-_/.]+\.md)',", txt_content)
 
 			for link in md_links:
