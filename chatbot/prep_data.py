@@ -1,4 +1,8 @@
 import os
+import pandas as pd
+import re
+import requests
+from bs4 import BeautifulSoup
 
 
 
@@ -25,6 +29,61 @@ def load_data():
 	print("Sources URLs:")
 	print(_sources_urls)
 	return _sources_urls
+
+
+
+def prep_data():
+	book_data = []
+
+	input_directory = r'chatbot\vector-db-persist-directory\resources'
+	
+	for file in os.listdir(input_directory):
+		if file.endswith('.txt'):
+			with open(os.path.join(input_directory, file), 'r') as f:
+				txt_content = f.read()
+				# Link all Markdown files extracted from the text file (Form A)
+				md_links = re.findall(r"'(https://[\w\d\-_/.]+\.md)',", txt_content)
+
+				for link in md_links:
+					md_file = link.rsplit('/', 1)[-1]
+					title = md_file[:-3]  # Remove the .md suffix
+
+					# Get the contents of the .md file
+					md_content_request = requests.get(link.replace('github.com', 'raw.githubusercontent.com').replace('/tree', ''))
+					md_content = md_content_request.text if md_content_request.status_code == 200 else ''
+
+					# Get the inline contents of the .md file
+					inline_links.update({inline_title: []})
+                    inline_links_list = re.findall(r'\[(.*?)\]\((.*?)\)', md_content)
+					for inline_link in inline_links_list:
+                        if inline_link[1].endswith('.md'): 
+                            inline_title = inline_link[1].rsplit('/', 1)[-1][:-3]
+                            inline_content_request = requests.get(inline_link[1].replace('github.com', 'raw.githubusercontent.com').replace('/tree', ''))
+                            inline_content = inline_content_request.text if inline_content_request.status_code == 200 else ''
+                            inline_links[title].append(inline_title)
+                            inline_links.update({inline_title: []})
+                            inline_content.update({inline_title: inline_content})
+
+					book_data.append({
+						'id': len(book_data) + 1,
+						'title': title,
+						'content': md_content,
+						'inline_content': inline_content,
+						'link': link,
+						'inline_link': link + '-inline',
+						'title_vector': generate_vector(),
+						'content_vector': generate_vector(),
+						'link_vector': generate_vector(),
+						'inline_link_vector': generate_vector(),
+					})
+
+	print(book_data.content['CNN'])
+
+
+
+def generate_vector():
+    return [0.1, 0.2, ...]
+
 
 
 def select_chapter():
