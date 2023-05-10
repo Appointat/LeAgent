@@ -36,9 +36,8 @@ def prep_data():
 	"""
     This function prepares the book data by extracting content from Markdown files and their inline links.
 
-	Returns:
-        DataFrame: A pandas DataFrame of book data, with columns 'id', 'title', 'content',
-        'link', 'inline_link_list', 'inline_title_list', and 'inline_content_list'.
+	:param DataFrame: A pandas DataFrame of book data, with columns 'id', 'title', 'content',
+    'link', 'inline_link_list', 'inline_title_list', and 'inline_content_list'.
 	"""
 	book_data = [] # Create an empty list to store book data
 	id = 0 # Set an initial value for the ID counter
@@ -57,22 +56,29 @@ def prep_data():
 				md_file = link.rsplit('/', 1)[-1]
 				md_title = md_file[:-3]  # Remove the .md suffix
 
-				# Get the contents of the .md file
-				md_content_request = requests.get(link.replace('github.com', 'raw.githubusercontent.com').replace('/tree', ''))
+				# Get the contents of the .md file.
+				converted_link = (
+					link.replace("github.com/open-academy", "open-academy.github.io")
+					.replace("tree/main", "_sources")
+					.replace("open-machine-learning-jupyter-book/", "")
+				)
+				md_content_request = requests.get(converted_link)
 				md_content = md_content_request.text if md_content_request.status_code == 200 else ''
-
+				#print(md_content)
 				# Get the inline contents of the .md file
 				inline_title_list = []
 				inline_content_list = []
 				inline_link_list = []
-				inline_links_list = re.findall(r'\[(.*?)\]\((http.*?)\)', md_content)
+				inline_links_list = re.findall(r'\[([^\]]+?)\]\((https?://[^\)]+?)\)', md_content)
+
 
 				for inline_title, inline_link in inline_links_list:
-					inline_content_request = requests.get(inline_link.replace('github.com', 'raw.githubusercontent.com').replace('/tree', ''))
-					inline_content = inline_content_request.text if inline_content_request.status_code == 200 else ''
+					#inline_content_request = requests.get(inline_link)
+					#inline_content = inline_content_request.text if md_content_request.status_code == 200 else ''
 					inline_title_list.append(inline_title)
-					inline_content_list.append(inline_content)
+					#inline_content_list.append(inline_content)
 					inline_link_list.append(inline_link)
+					#print("{}: {}".format(inline_title, inline_link))
 
 				# Add the book data to the list
 				book_data.append({
@@ -89,6 +95,7 @@ def prep_data():
 	book_data_df = pd.DataFrame(book_data)
 	print(book_data_df.loc[book_data_df['title'] == 'CNN', 'content'].values[0])
 	return book_data_df
+
 
 
 def select_chapter():

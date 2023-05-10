@@ -21,11 +21,10 @@ from langchain.prompts import PromptTemplate
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
 from langchain.chains.question_answering import load_qa_chain
 
-import qdrant_client
+from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest
 
 from prep_data import prep_data
-
 
 
 ## chatbot agent class
@@ -59,11 +58,13 @@ class ChatbotAgent:
 
         # DataFrame: A pandas DataFrame of book data, with columns 'id', 'title', 'content',
         # 'link', 'inline_link_list', 'inline_title_list', and 'inline_content_list'.
-       self.book_data_df = prep_data()
+        self.book_data_df = prep_data()
 
         # Idex data
         vector_size = len(self.book_data_df)
-        qdrant.recreate_collection(
+        client = QdrantClient("localhost", port=6333)
+
+        client.recreate_collection(
             collection_name='Articles',
             vectors_config={
                 'title': rest.VectorParams(
@@ -93,7 +94,7 @@ class ChatbotAgent:
             }
         )
 
-        qdrant.upsert(
+        client.upsert(
             collection_name='Articles',
             points=[
                 rest.PointStruct(
@@ -108,7 +109,7 @@ class ChatbotAgent:
                     },
                     payload=row.to_dict(),
                 )
-                for _, row in article_df.iterrows()
+                for _, row in self.book_data_df.iterrows()
             ],
         )
 
@@ -118,11 +119,12 @@ class ChatbotAgent:
             # Creates embedding vector from user query
             embedded_query = openai.Embedding.create(
                 input=query,
-                model=EMBEDDING_MODEL, # EMBEDDING_MODEL = "text-embedding-ada-002"
+                model="text-embedding-ada-002"
             )['data'][0]['embedding']
+
             print("embedded_qury: ".format(embedded_qury))
     
-            query_results = qdrant.search(
+            query_results = client.search(
                 collection_name=collection_name,
                 query_vector=(
                     vector_name, embedded_query
