@@ -2,59 +2,36 @@ import os
 import pandas as pd
 import re
 import requests
-from bs4 import BeautifulSoup
+
+import openai
+
+from qdrant_client import QdrantClient
+from qdrant_client.http import models as rest
 
 
 
-def load_data():
-	path = r'chatbot\vector-db-persist-directory\resources'
-	sections_list = []
-	for root, dirs, files in os.walk(path):
-		for file in files:
-			if file.endswith('.txt'):
-				file_name_without_extension = os.path.splitext(file)[0]
-				sections_list.append(file_name_without_extension)
-	
-
-	chapter_selector = select_chapter()
-	chapter_selector = "ml-advanced"
-	_resources_path = r'chatbot\vector-db-persist-directory\resources\{}.txt'.format(chapter_selector)
-	with open(_resources_path, 'r') as f:
-		lines = f.readlines()
-	_sources_urls = []
-	for line in lines:
-		if line.startswith("'https://") and line.endswith("',\n"):
-			path_temp = line.strip()[1:-2]
-			_sources_urls.append(path_temp)
-	print("Sources URLs:")
-	print(_sources_urls)
-	return _sources_urls
-
-
-
-def prep_data():
+def prep_data(openai_api_key=''):
 	"""
     This function prepares the book data by extracting content from Markdown files and their inline links.
 
 	:param DataFrame: A pandas DataFrame of book data, with columns 'id', 'title', 'content',
     'link', 'inline_link_list', 'inline_title_list', and 'inline_content_list'.
 	"""
-	book_data = [] # Create an empty list to store book data
-	id = 0 # Set an initial value for the ID counter
+	book_data = [] # Create an empty list to store book data.
+	id = 0 # Set an initial value for the ID counter.
 
-	input_directory = r'chatbot\vector-db-persist-directory\resources' # Set the defualt directory
+	input_directory = r'chatbot\vector-db-persist-directory\resources' # Set the defualt directory.
 	
 	for file in os.listdir(input_directory):
-		if file.endswith('.txt'):
-			id = id + 1
+		if file.endswith('deep-learning.txt'):
 			with open(os.path.join(input_directory, file), 'r') as f:
 				txt_content = f.read()
-				# Link all Markdown files extracted from the text file
+				# Link all Markdown files extracted from the text file.
 				md_links = re.findall(r"'(https://[\w\d\-_/.]+\.md)',", txt_content)
 
 			for link in md_links:
 				md_file = link.rsplit('/', 1)[-1]
-				md_title = md_file[:-3]  # Remove the .md suffix
+				md_title = md_file[:-3]  # Remove the .md suffix.
 
 				# Get the contents of the .md file.
 				converted_link = (
@@ -64,38 +41,120 @@ def prep_data():
 				)
 				md_content_request = requests.get(converted_link)
 				md_content = md_content_request.text if md_content_request.status_code == 200 else ''
-				#print(md_content)
-				# Get the inline contents of the .md file
-				inline_title_list = []
-				inline_content_list = []
-				inline_link_list = []
-				inline_links_list = re.findall(r'\[([^\]]+?)\]\((https?://[^\)]+?)\)', md_content)
+				
+				md_content_split = split_text_into_chunks(md_content, chunk_size=1000)  # Split the text into chunks.
+				for text in md_content_split:
+					id = id + 1
 
+					# Get the inline contents of the .md file.
+					inline_title_list = []
+					inline_content_list = []
 
-				for inline_title, inline_link in inline_links_list:
-					#inline_content_request = requests.get(inline_link)
-					#inline_content = inline_content_request.text if md_content_request.status_code == 200 else ''
-					inline_title_list.append(inline_title)
-					#inline_content_list.append(inline_content)
-					inline_link_list.append(inline_link)
-					#print("{}: {}".format(inline_title, inline_link))
+					inline_link_list = []
+					inline_links_list = re.findall(r'\[([^\]]+?)\]\((https?://[^\)]+?)\)', text)
 
-				# Add the book data to the list
-				book_data.append({
-					'id': id,
-					'title': md_title,
-					'content': md_content, # Further optimization can be done by splitting files to reduce text volume
-					'link': link,
-					'inline_title_list': inline_title_list,
-					'inline_content_list': inline_content_list,
-					'inline_link_list': inline_link_list,
-				})
+					for inline_title, inline_link in inline_links_list:
+						inline_content_request = requests.get(inline_link)
+						inline_content = inline_content_request.text if md_content_request.status_code == 200 else ''
+						inline_title_list.append(inline_title)
+						inline_content_list.append(inline_content)
+						inline_link_list.append(inline_link)
 
-	# Convert the book_data list into a pandas DataFrame
+					# Add the book data to the list.
+					book_data.append({
+						'id': id,
+						'title': md_title,
+						'content': text, # Further optimization can be done by splitting files to reduce text volume
+						'content_vector': get_emmbedings(text), # Further optimization can be done by splitting files to reduce text volume
+						'link': converted_link,
+						'inline_title_list': inline_title_list,
+						'inline_content_list': inline_content_list,
+						'inline_link_list': inline_link_list,
+					})
+
+	# Convert the book_data list into a pandas DataFrame.
 	book_data_df = pd.DataFrame(book_data)
-	print(book_data_df.loc[book_data_df['title'] == 'CNN', 'content'].values[0])
+
+	# Idex client.
+	client = QdrantClient(path=r'chatbot\vector-db-persist-directory\Qdrant')
+	
+	# Upser the data into the collection of the Qdrant database
+	vector_size = 1536
+	client.recreate_collection(
+		collection_name='Articles',
+		vectors_config={
+			#'title': rest.VectorParams(
+			#	distance=rest.Distance.COSINE,
+			#	size=vector_size,
+			#),
+			'content': rest.VectorParams(
+				distance=rest.Distance.COSINE,
+				size=vector_size,
+			),
+			#'inline_title_vector': rest.VectorParams(
+			#    distance=rest.Distance.COSINE,
+			#    size=vector_size,
+			#),
+			# 'inline_content_vector': rest.VectorParams(
+			#    distance=rest.Distance.COSINE,
+			#    size=vector_size,
+			#),
+		}
+	)
+
+	client.upsert(
+        collection_name='Articles',
+        points=[
+            rest.PointStruct(
+                id=row['id'],
+                vector={
+                    #'title': get_emmbedings(row['title']),
+                    'content': row['content_vector'],
+                    #'inline_title_vector': row['inline_title_list'],
+                    #'inline_content_vector': row['inline_content_list'],
+                },
+                payload=row.to_dict(),
+            )
+            for _, row in book_data_df.iterrows()
+        ],
+    )
+	
+	print("number of the collection: {}".format(client.count(collection_name='Articles')))
 	return book_data_df
 
+
+
+def get_emmbedings(text):
+	with open(r'chatbot\OpenAI-API-key\OpenAI_API_key.txt', 'r') as f:
+		openai_api_key = f.read().strip()
+	openai.api_key = openai_api_key
+	embedded_query = openai.Embedding.create(
+            input=text,
+            model="text-embedding-ada-002",
+    )['data'][0]['embedding']
+	
+	return embedded_query # a vector of numbers
+
+
+
+def split_text_into_chunks(text, chunk_size=500):
+	if len(text) <= chunk_size:
+		return [text]
+	
+	words = text.split()
+	chunks = []
+	current_chunk = []
+	
+	for word in words:
+		current_chunk.append(word)
+		
+		if len(current_chunk) == chunk_size:
+			chunks.append(' '.join(current_chunk))
+			current_chunk = []
+	if current_chunk:
+		chunks.append(' '.join(current_chunk))
+		
+	return chunks
 
 
 def select_chapter():
@@ -158,11 +217,11 @@ def select_chapter():
 	"""
 
 	chapter_introduction = {
-		"[data science]": conclusion_for_data_science,
-		"[deep learning]": conclusion_for_deep_learning,
-		"[machine learning productionization]": conclusion_for_machine_learning_productionization,
-		"[ml advanced]": conclusion_for_ml_advanced,
-		"[ml fundamentals]": conclusion_for_ml_fundamentals,
+		"data science": conclusion_for_data_science,
+		"deep learning": conclusion_for_deep_learning,
+		"machine learning productionization": conclusion_for_machine_learning_productionization,
+		"ml advanced": conclusion_for_ml_advanced,
+		"ml fundamentals": conclusion_for_ml_fundamentals,
 	}
 
 	for chap, intro in chapter_introduction.items():
@@ -175,4 +234,4 @@ def select_chapter():
 	chapter_selector = input("Could you please choose one chapter as the background for our conversation: ")
 	while (chapter_selector not in chapter_introduction.keys()):
 		chapter_selector = input("Could you please choose one chapter as the background for our conversation (input the right choice): ")
-	return chapter_selector
+	return chapter_selector.replace(" ", "-")

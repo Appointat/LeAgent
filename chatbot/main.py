@@ -1,63 +1,93 @@
-## import libraries
 import os
-from vectordb import ChatbotAgent
-from load_data import load_data
+from chatbot_agent import ChatbotAgent
+from prep_data import prep_data
 
 
 
-# main function
 def main():
-	## OpenAI API Key
+	# Set the OpenAI API key.
 	with open(r'chatbot\OpenAI-API-key\OpenAI_API_key.txt', 'r') as f:
 		api_key = f.read().strip()
 	os.environ['OPENAI_API_KEY'] = api_key
-	print("OpenAI API Key Set\n")
+	print("Set the OpenAI API key.\n")
 
-	## Configure Chroma
-	persist_directory = r'chatbot\vector-db-persist-directory\chroma\chatbot'
+	# Configure QDdrant client.
 
-	# URLs of the files to be merged from Project Open-academy
-	_sources_urls = load_data()
-
-	## Initialize the ChatbotAgent
-	chatbot_agent = ChatbotAgent(_openai_api_key=os.environ["OPENAI_API_KEY"], _sources_urls=_sources_urls, _persist_directory=persist_directory)
+	## Initialize the ChatbotAgent.
+	chatbot_agent = ChatbotAgent(_openai_api_key=os.environ["OPENAI_API_KEY"])
 	
+	# Start the conversation.
 	print("\n\n****Chatbot Agent Initialized****")
-	# start the conversation
-	while 1:
+	while chatbot_agent.count <= 20:
 		print("[{}]".format(chatbot_agent.count))
-		markdown_text = input("Query   : ")
-		chatbot_agent.query = chatbot_agent.markdown_to_python(markdown_text)
-		if chatbot_agent.count == 0:
-			chatbot_agent.result = chatbot_agent.chatbot_qa({"question": chatbot_agent.query, "chat_history": chatbot_agent.chat_history})
+		query = input("Query   : ")
+		answer_list = []
+		link_list = []
+		# This time we'll query using content vector
+		query_results = chatbot_agent.search_context_qdrant(query, 'Articles', top_k=4)
+		for i, article in enumerate(query_results):
+			print(f'{i + 1}. {article.payload["title"]} (Score: {round(article.score, 3)}), link: {article.payload["link"]}')
+			chain = chatbot_agent.prompt_the_chatbot()
+			answer = chain.predict(
+				context=article.payload["content"], 
+				chat_history=chatbot_agent.convert_chat_history_to_string(), 
+				summaries="",
+				qury=query,
+			)
+			answer_list.append(answer)
+			link_list.append(article.payload["link"])
+
+		n = len(answer_list)
+		if n == 0:
+			combine_answer = "I'm sorry, there is not enough information to provide a meaningful answer to your question. Can you please provide more context or a specific question?"
 		else:
-			output_chain = chatbot_agent.chatbot_qa_retrieval_map_reduce_chain_type_with_prompt()
-			anwser_1 = output_chain['output_text']
-			#anwser_2 = chatbot_agent.chatbot_qa({"question": chatbot_agent.query, "chat_history": chatbot_agent.chat_history})["answer"]
-			anwser_2 = ""
-			prompt_query = '''
-				Query: 
-					{}
-				*******
-				Answer 1: 
-					{}
-				*******
-				Answer 2: 
-					{}
-				*******
-				Given the Query, I come up with Answer 1 and Answer 2, now combine and Insert the Answer 1 into the Answer 2.
-				If there are repeated expression in the answers (expressing the same meaning), you should revise your answer to avoid the repetition.
-				Show me your new anwser.'''.format(chatbot_agent.query, anwser_1, anwser_2)
-			chatbot_agent.result = chatbot_agent.chatbot_qa({"question": prompt_query, "chat_history": chatbot_agent.chat_history})
+			context=f"""
+Now I will provide you with {n} chains, here is the definition of chain: each chain contains an answer and a link. The answers in the chain are the results from the links.
+In theory, each chain should produce a paragraph with MD links as references. It means that you MUST tell me from which references you make the summery.
+But if the meaning of an answer in a certain chain is similar to 'I am not sure about your question' or 'I refuse to answer such a question', it means that this answer chain is deprecated, and you should actively ignore the information in this answer chain.
 
-		chatbot_agent.count = chatbot_agent.count + 1
-		chatbot_agent.chat_history = chatbot_agent.chat_history + [(chatbot_agent.query, chatbot_agent.result["answer"])]
-		# update chat_history
-		# print answer
-		print("Chat Bot: {}\n".format(chatbot_agent.result["answer"]))
-	return 0
+You now are asked to COMBINE these {n} chains (combination means avoiding repetition, smooth writing, giving verbose answer).
+The finl answer is ALWAYS in the form of TEXT WITH MD LINK. If no refernce for one sentence, you do not need to attach the link to that sentence.
+In addition, ALWAYS return "TEXT WITH MD LINK", and ALSO ALWAYs return a "REFERENCE" part in your answer (they are two parts).
+For exmaple:
+    I provide the input text:
+		CHAINT 1:
+			CONTEXT: 
+				Machine learning algorithms build a model based on sample data, known as training data, in order to make predictions or decisions without being explicitly programmed to do so.
+			SOURCES: 
+				Blabla.
+			REFERENCE: 
+				https://en.wikipedia.org/wiki/Machine_learning
+		CHAINT 2:
+			TEXT: A convolutional neural network (CNN) is a type of artificial neural network commonly used in deep learning for image recognition and classification. 
+			REFERENCE: https://open-academy.github.io/machine-learning/_sources/deep-learning/image-classification.md
+    Your output should be:
+		COMBINATION: 
+			Machine learning is a method of teaching computers to learn patterns in data without being explicitly programmed. It involves building models that can make predictions or decisions based on input data [1]. 
+			One type of machine learning model commonly used for sequential or time series data is recurrent neural networks (RNNs) [2]. 
+        REFERENCE: 
+			[1] https://en.wikipedia.org/wiki/Machine_learning
+			[2] https://open-academy.github.io/machine-learning/_sources/deep-learning/image-classification.md
+=========
+The user's query is: '{query}'.
+
+=========
+        """
+			for i in range(n):
+				context += f"""
+### CHAIN {i+1}
+CONTEXT: 
+	{answer_list[i]}
+REFERENCE: 
+	{link_list[i]}
+"""
+			combine_chain = chatbot_agent.combine_prompt()
+			combine_answer = combine_chain.run(
+				context = context,
+			)
+		print(f'Answer: {combine_answer}\n')
+		chatbot_agent.update_chat_history(query, combine_answer)
 
 
-# call main function
 if __name__ == "__main__":
 	main()
