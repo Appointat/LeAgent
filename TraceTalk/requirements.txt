@@ -1,0 +1,4 @@
+openai
+qdrant_client
+langchain
+tiktoken
