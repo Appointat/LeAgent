@@ -1,6 +1,7 @@
 ## Import Python Packages
 from collections import deque
 import os
+from tkinter import SEL
 
 import openai
 
@@ -68,7 +69,7 @@ class ChatbotAgent:
 
 
     # Prompt the chatbot.
-    def prompt_the_chatbot(self):
+    def prompt_chatbot(self):
         template="""
 Context information is below: 
 {context}
@@ -95,21 +96,69 @@ FINAL ANSWER IN ENGLISH:
         )
         return chain
 
+
     # Combine prompt.
-    def combine_prompt(self):
-        template = """
-{context}
+    def prompt_combine_chain(self, query, answer_list, link_list):
+        n = len(answer_list)
+        if n == 0:
+            return "I'm sorry, there is not enough information to provide a meaningful answer to your question. Can you please provide more context or a specific question?"
+        else:
+            chat_history = self.convert_chat_history_to_string()
+            template=f"""
+Now I will provide you with {n} chains, here is the definition of chain: each chain contains an answer and a link. The answers in the chain are the results from the links.
+In theory, each chain should produce a paragraph with MD links as references. It means that you MUST tell me from which references you make the summery.
+The smaller the number of the chain, the more important the information contained in the chain.
+But if the meaning of an answer in a certain chain is similar to 'I am not sure about your question' or 'I refuse to answer such a question', it means that this answer chain is deprecated, and you should actively ignore the information in this answer chain.
+
+You now are asked to COMBINE these {n} chains (combination means avoiding repetition, smooth writing, giving verbose answer).
+The finl answer is ALWAYS in the form of TEXT WITH MD LINK. If no refernce for one sentence, you do not need to attach the link to that sentence.
+In addition, ALWAYS return "TEXT WITH MD LINK", and ALSO ALWAYs return a "REFERENCE" part in your answer (they are two parts).
+For exmaple:
+    I provide the input text:
+		CHAIN 1:
+			CONTEXT: 
+				Machine learning algorithms build a model based on sample data, known as training data, in order to make predictions or decisions without being explicitly programmed to do so.
+			SOURCES: 
+				Blabla.
+			REFERENCE: 
+				https://en.wikipedia.org/wiki/Machine_learning
+		CHAIN 2:
+			TEXT: A convolutional neural network (CNN) is a type of artificial neural network commonly used in deep learning for image recognition and classification. 
+			REFERENCE: https://open-academy.github.io/machine-learning/_sources/deep-learning/image-classification.md
+    Your output should be:
+		COMBINATION: 
+			Machine learning is a method of teaching computers to learn patterns in data without being explicitly programmed. It involves building models that can make predictions or decisions based on input data [1]. 
+			One type of machine learning model commonly used for sequential or time series data is recurrent neural networks (RNNs) [2]. 
+        REFERENCE: 
+			[1] https://en.wikipedia.org/wiki/Machine_learning
+			[2] https://open-academy.github.io/machine-learning/_sources/deep-learning/image-classification.md
+=========
+chat_history
+{chat_history}
+user: {query}
 
 =========
-FINAL ANSWER IN ENGLISH:
+        """
+            for i in range(n):
+                template += f"""
+### CHAIN {i+1}
+CONTEXT: 
+	{answer_list[i]}
+REFERENCE: 
+	{link_list[i]}
 """
-        prompt = PromptTemplate(template=template, input_variables=["context"]) # Parameter the prompt template
-        chain = LLMChain(
-            llm=self.llm, 
-            prompt=prompt,
-            verbose=True,
-        )
-        return chain
+            template += f"""     
+=========
+FINAL ANSWER IN ENGLISH:
+"""         
+            print("Prompt: {}".format(template))
+            prompt = PromptTemplate(template=template, input_variables=[]) # Parameter the prompt template
+            chain = LLMChain(
+                llm=self.llm, 
+                prompt=prompt,
+                verbose=True,
+            )
+            return chain.run({})
 
 
     # Update chat history.  
@@ -134,7 +183,7 @@ FINAL ANSWER IN ENGLISH:
 
     # Convert chat history to string.
     def convert_chat_history_to_string(self, new_query="", new_answser=""):
-        chat_string = ""
+        chat_string = "chatbot: I am TraceTalk, a cutting-edge chatbot designed to encapsulate the power of advanced AI technology, with a special focus on data science, machine learning, and deep learning. (https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding)\n"
         if len(self.chat_history) > 0:
             for message in self.chat_history:
                 chat_string += f"{message['role']}: {message['content']}\n"
