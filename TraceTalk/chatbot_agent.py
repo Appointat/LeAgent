@@ -1,27 +1,15 @@
 ## Import Python Packages
 from collections import deque
 import os
-from tkinter import SEL
 
 import openai
 
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.text_splitter import TokenTextSplitter
 from langchain.llms import OpenAI
-from langchain.chains import ChatVectorDBChain
-from langchain.chains import RetrievalQA
-
-from langchain.docstore.document import Document
-from langchain.document_loaders.base import BaseLoader
-
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-from langchain.chains.qa_with_sources import load_qa_with_sources_chain
-from langchain.chains.question_answering import load_qa_chain
 
 from qdrant_client import QdrantClient
 
-from prep_data import prep_data
 from prep_data import get_emmbedings
 
 
