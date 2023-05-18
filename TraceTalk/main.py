@@ -1,4 +1,3 @@
-from math import comb
 import os
 from chatbot_agent import ChatbotAgent
 
@@ -36,6 +35,7 @@ def main():
 			link_list.append(article.payload["link"])
 
 		combine_answer = chatbot_agent.prompt_combine_chain(query=query, answer_list=answer_list, link_list=link_list)
+		print(f'Query : {query}\n')
 		print(f'Answer: {combine_answer}\n')
 		chatbot_agent.update_chat_history(query, combine_answer)
 

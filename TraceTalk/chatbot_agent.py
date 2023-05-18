@@ -106,12 +106,13 @@ FINAL ANSWER IN ENGLISH:
             chat_history = self.convert_chat_history_to_string()
             template=f"""
 Now I will provide you with {n} chains, here is the definition of chain: each chain contains an answer and a link. The answers in the chain are the results from the links.
-In theory, each chain should produce a paragraph with MD links as references. It means that you MUST tell me from which references you make the summery.
+In theory, each chain should produce a paragraph with links as references. It means that you MUST tell me from which references you make the summery. 
 The smaller the number of the chain, the more important the information contained in the chain.
+Your final answer is verbose.
 But if the meaning of an answer in a certain chain is similar to 'I am not sure about your question' or 'I refuse to answer such a question', it means that this answer chain is deprecated, and you should actively ignore the information in this answer chain.
 
 You now are asked to COMBINE these {n} chains (combination means avoiding repetition, smooth writing, giving verbose answer).
-The finl answer is ALWAYS in the form of TEXT WITH MD LINK. If no refernce for one sentence, you do not need to attach the link to that sentence.
+The final answer is ALWAYS in the form of TEXT WITH MD LINK. If no refernce for one sentence, you do not need to attach the link to that sentence.
 In addition, ALWAYS return "TEXT WITH MD LINK", and ALSO ALWAYs return a "REFERENCE" part in your answer (they are two parts).
 For exmaple:
     I provide the input text:
