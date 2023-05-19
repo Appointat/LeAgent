@@ -21,7 +21,7 @@ def main():
 		answer_list = []
 		link_list = []
 		# query it using content vector.
-		query_results = chatbot_agent.search_context_qdrant(query, 'Articles', top_k=4)
+		query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string()+"\nuser: "+query, 'Articles', top_k=4)
 		for i, article in enumerate(query_results):
 			print(f'{i + 1}. {article.payload["title"]} (Score: {round(article.score, 3)}), link: {article.payload["link"]}')
 			chain = chatbot_agent.prompt_chatbot()

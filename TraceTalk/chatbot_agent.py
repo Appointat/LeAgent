@@ -1,6 +1,7 @@
 ## Import Python Packages
 from collections import deque
 import os
+import re
 
 import openai
 
@@ -76,7 +77,7 @@ QUESTION: {qury}
 =========
 FINAL ANSWER IN ENGLISH:
             """
-        prompt = PromptTemplate(template=template, input_variables=["context", "chat_history", "summaries", "qury"]) # Parameter the prompt template
+        prompt = PromptTemplate(template=template, input_variables=["context", "chat_history", "summaries", "qury"], validate_template=False) # Parameter the prompt template
         chain = LLMChain(
             llm=self.llm, 
             prompt=prompt,
@@ -99,7 +100,7 @@ The smaller the number of the chain, the more important the information containe
 Your final answer is verbose.
 But if the meaning of an answer in a certain chain is similar to 'I am not sure about your question' or 'I refuse to answer such a question', it means that this answer chain is deprecated, and you should actively ignore the information in this answer chain.
 
-You now are asked to COMBINE these {n} chains (combination means avoiding repetition, smooth writing, giving verbose answer).
+You now are asked to COMBINE these {n} chains (combination means avoiding repetition, writing logically, smooth writing, giving verbose answer) into 2-4 paragraphs.
 The final answer is ALWAYS in the form of TEXT WITH MD LINK. If no refernce for one sentence, you do not need to attach the link to that sentence.
 In addition, ALWAYS return "TEXT WITH MD LINK", and ALSO ALWAYs return a "REFERENCE" part in your answer (they are two parts).
 For exmaple:
@@ -122,6 +123,8 @@ For exmaple:
 			[1] https://en.wikipedia.org/wiki/Machine_learning
 			[2] https://open-academy.github.io/machine-learning/_sources/deep-learning/image-classification.md
 =========
+"""
+            template += """
 chat_history
 {chat_history}
 user: {query}
@@ -140,14 +143,15 @@ REFERENCE:
 =========
 FINAL ANSWER IN ENGLISH:
 """         
-            print("Prompt: {}".format(template))
-            prompt = PromptTemplate(template=template, input_variables=[]) # Parameter the prompt template
+            prompt = PromptTemplate(template=template, input_variables=['query', 'chat_history'], validate_template=False) # Parameter the prompt template
             chain = LLMChain(
                 llm=self.llm, 
                 prompt=prompt,
                 verbose=True,
             )
-            return chain.run({})
+            combine_answer = chain.run(query=query, chat_history=chat_history)
+            combine_answer = self.convert_links_in_text(combine_answer)
+            return combine_answer
 
 
     # Update chat history.  
@@ -180,6 +184,19 @@ FINAL ANSWER IN ENGLISH:
             chat_string += f"user: {new_query}\n"
             chat_string += f"chatbot: {new_answser}\n"
         return chat_string
+
+
+    def convert_links_in_text(self, text):
+        links = re.findall('https://open-academy.github.io/machine-learning/[^\s]*', text)
+        for link in links:
+            converted_link = (
+                link.replace("_sources/", "")
+                .replace(".md", ".html")
+                .replace("open-machine-learning-jupyter-book/", "")
+            )
+            text = text.replace(link, converted_link)
+        return text
+
 
     # Convert Markdown to Python.
     def markdown_to_python(self, markdown_text):

@@ -60,7 +60,6 @@ def prep_data():
 					for inline_title, inline_link in inline_links_list:
 						if inline_link.endswith(('.exe', '.zip', '.rar')):
 							continue
-						print(inline_link)
 						try:
 							inline_content_request = requests.get(inline_link)
 							inline_content = inline_content_request.text if md_content_request.status_code == 200 else ''
@@ -76,6 +75,7 @@ def prep_data():
 					book_data.append({
 						'id': id,
 						'title': md_title,
+						'title_vector': get_emmbedings(md_title),
 						'content': text, # Further optimization can be done by splitting files to reduce text volume.
 						'content_vector': get_emmbedings(text), # Further optimization can be done by splitting files to reduce text volume.
 						'link': converted_link,
@@ -95,10 +95,10 @@ def prep_data():
 	client.recreate_collection(
 		collection_name='Articles',
 		vectors_config={
-			#'title': rest.VectorParams(
-			#	distance=rest.Distance.COSINE,
-			#	size=vector_size,
-			#),
+			'title': rest.VectorParams(
+				distance=rest.Distance.COSINE,
+				size=vector_size,
+			),
 			'content': rest.VectorParams(
 				distance=rest.Distance.COSINE,
 				size=vector_size,
@@ -120,7 +120,7 @@ def prep_data():
             rest.PointStruct(
                 id=row['id'],
                 vector={
-                    #'title': get_emmbedings(row['title']),
+                    'title': row['title_vector'],
                     'content': row['content_vector'],
                     #'inline_title_vector': row['inline_title_list'],
                     #'inline_content_vector': row['inline_content_list'],
