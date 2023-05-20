@@ -38,6 +38,14 @@ We also acknowledge that interactions may occasionally veer off-topic or include
 
 In essence, TraceTalk is more than a chatbot—it's the next step in interactive learning. Our commitment to comprehensive implementation and meticulous project management ensures not only accurate and relevant responses but a seamless, informative, and engaging user experience. Welcome to the future of conversation, welcome to TraceTalk.
 
+**Query 01**: "Introduce TraceTalk, please."
+
+![image](https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/4c68ad40-54ee-4d64-be66-f7de445b10bd)
+
+**Query 02**: "I am a new learner, give me some sources of data science."
+
+![image](https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/f4d4da99-0246-4dbd-96ee-f6dcc4180689)
+
 
 ## Tutorial
 
