@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 from multiprocessing import Pool
 from handle_multiprocessing import process_request
 from chatbot_agent import ChatbotAgent
@@ -7,6 +8,7 @@ from chatbot_agent import ChatbotAgent
 
 def main():
 	# Initialize the ChatbotAgent.
+	load_dotenv()
 	global chatbot_agent
 	chatbot_agent = ChatbotAgent(openai_api_key=os.getenv('OPENAI_API_KEY'))
 

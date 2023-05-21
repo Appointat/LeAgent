@@ -1,5 +1,6 @@
 import os
 import warnings
+from dotenv import load_dotenv 
 
 import pandas as pd
 import re
@@ -136,6 +137,7 @@ def prep_data():
 
 
 def get_emmbedings(text):
+	load_dotenv()
 	openai.api_key = os.getenv('OPENAI_API_KEY')
 	embedded_query = openai.Embedding.create(
             input=text,
