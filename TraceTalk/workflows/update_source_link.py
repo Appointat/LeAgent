@@ -32,4 +32,4 @@ for folder in folders:
 
 
 # Update the embeddings of text
-# prep_data()
+prep_data()
