@@ -6,15 +6,9 @@ from chatbot_agent import ChatbotAgent
 
 
 def main():
-	# Set the OpenAI API key.
-	with open(r'TraceTalk\OpenAI-API-key\OpenAI_API_key.txt', 'r') as f:
-		api_key = f.read().strip()
-	os.environ['OPENAI_API_KEY'] = api_key
-	print("Set the OpenAI API key.\n")
-
 	# Initialize the ChatbotAgent.
 	global chatbot_agent
-	chatbot_agent = ChatbotAgent(openai_api_key=os.environ["OPENAI_API_KEY"])
+	chatbot_agent = ChatbotAgent(openai_api_key=os.getenv('OPENAI_API_KEY'))
 
 	# Start the conversation.
 	print("\n\n****Chatbot Agent Initialized****")
