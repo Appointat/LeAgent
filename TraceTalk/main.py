@@ -30,18 +30,6 @@ def main():
 		# results is a list of tuples of the form (answer, link)
 		answer_list, link_list = zip(*results)
 
-		#for i, article in enumerate(query_results):
-		#	print(f'{i + 1}. {article.payload["title"]} (Score: {round(article.score, 3)}), link: {article.payload["link"]}')
-		#	chain = chatbot_agent.prompt_chatbot()
-		#	answer = chain.predict(
-		#		context=article.payload["content"],
-		#		chat_history=chatbot_agent.convert_chat_history_to_string(), 
-		#		summaries="",
-		#		qury=query,
-		#	)
-		#	answer_list.append(answer)
-		#	link_list.append(article.payload["link"])
-
 		combine_answer = chatbot_agent.prompt_combine_chain(query=query, answer_list=answer_list, link_list=link_list)
 		print(f'Query : {query}\n')
 		print(f'Answer: {combine_answer}\n')
