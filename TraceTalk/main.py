@@ -27,7 +27,7 @@ def main():
 		with Pool(len(query_results)) as p:
 			results = p.map(process_request, requests)
 
-		# results is a list of tuples of the form (answer, link)
+		# Results is a list of tuples of the form (answer, link).
 		answer_list, link_list = zip(*results)
 
 		combine_answer = chatbot_agent.prompt_combine_chain(query=query, answer_list=answer_list, link_list=link_list)
