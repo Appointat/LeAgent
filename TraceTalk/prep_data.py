@@ -47,6 +47,8 @@ def prep_data():
 				
 				md_content_split = split_text_into_chunks(md_content, chunk_size=1000)  # Split the text into chunks.
 				for text in md_content_split:
+					print (f'*************\n{converted_link}\n{text}')
+					input()
 					if not text:
 						continue
 					id = id + 1
@@ -145,6 +147,22 @@ def get_emmbedings(text):
     )['data'][0]['embedding']
 	
 	return embedded_query # a vector of numbers
+
+
+
+def split_text_into_chunks_2(text, delimiter="###", chunk_size=500):
+	pattern = r"---.*?kernelspec:\n  display_name: Python 3\n  language: python\n  name: python3\n---"
+	text = re.sub(pattern, "", text, flags=re.DOTALL)
+	chunks = [chunk + delimiter for chunk in text.split(delimiter) if chunk]
+
+	result_chunks = []
+	for chunk in chunks:
+		if len(chunk) > 0:
+			words = chunk.split()
+			for i in range(0, len(words), chunk_size):
+				result_chunks.append(' '.join(words[i:i+chunk_size]))
+	
+	return result_chunks
 
 
 
