@@ -46,6 +46,9 @@ In essence, TraceTalk is more than a chatbot—it's the next step in interactive
 
 ![image](https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/f4d4da99-0246-4dbd-96ee-f6dcc4180689)
 
+An answer from TraceTalk. As we do not provide the UI, so we reform the answer in ChatGPT to better present the quality of the original answer.
+![image](https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/b5498664-462d-4be3-adb0-9357176c0472)
+
 
 ## Tutorial
 
