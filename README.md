@@ -40,14 +40,22 @@ In essence, TraceTalk is more than a chatbot—it's the next step in interactive
 
 **Query 01**: "Introduce TraceTalk, please."
 
-![image](https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/4c68ad40-54ee-4d64-be66-f7de445b10bd)
+<center>
+<img src="https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/4c68ad40-54ee-4d64-be66-f7de445b10bd" alt="Answer 01">
+</center>
 
 **Query 02**: "I am a new learner, give me some sources of data science."
 
-![image](https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/f4d4da99-0246-4dbd-96ee-f6dcc4180689)
+<center>
+<img src="https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/f4d4da99-0246-4dbd-96ee-f6dcc4180689" alt="Answer 02">
+</center>
 
 An answer from TraceTalk. As we do not provide the UI, so we reform the answer in ChatGPT to better present the quality of the original answer.
-![image](https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/b5498664-462d-4be3-adb0-9357176c0472)
+
+<center>
+<img src="https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/b5498664-462d-4be3-adb0-9357176c0472" alt="Answer with python code">
+</center>
+
 
 
 ## Tutorial
