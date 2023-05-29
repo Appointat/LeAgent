@@ -26,7 +26,7 @@ def prep_data():
 	input_directory = r'TraceTalk\vector-db-persist-directory\resources' # Set the defualt directory.
 	
 	for file in os.listdir(input_directory):
-		if file.endswith('.txt'):
+		if file.endswith('deep-learning.txt'):
 			with open(os.path.join(input_directory, file), 'r') as f:
 				txt_content = f.read()
 				# Link all Markdown files extracted from the text file.
@@ -150,23 +150,38 @@ def get_emmbedings(text):
 
 
 
-def split_text_into_chunks_2(text, delimiter="###", chunk_size=500):
-	pattern = r"---.*?kernelspec:\n  display_name: Python 3\n  language: python\n  name: python3\n---"
+def split_text_into_chunks(text, delimiter="###", chunk_size=500):
+	pattern = r"---.*?---"
 	text = re.sub(pattern, "", text, flags=re.DOTALL)
-	chunks = [chunk + delimiter for chunk in text.split(delimiter) if chunk]
+	chunks = re.split('({})'.format(delimiter), text)
+	chunks = ['{}{}'.format(delimiter, chunk) if i % 2 else chunk for i, chunk in enumerate(chunks)]
 
-	result_chunks = []
+	final_chunks = []
 	for chunk in chunks:
-		if len(chunk) > 0:
-			words = chunk.split()
-			for i in range(0, len(words), chunk_size):
-				result_chunks.append(' '.join(words[i:i+chunk_size]))
+		words = re.split(r'(\s)', chunk)  # Split a string using regex, preserving spaces and newlines.
+		current_chunk_words = []
+		current_word_count = 0
+		for word in words:
+            # If word is a space or a newline, don't count the word; otherwise, add 1 to the word count.
+			if word.strip() != '':
+				current_word_count += 1
+			current_chunk_words.append(word)
+
+            # When the number of words reaches chunk_size, add a new chunk.
+			if current_word_count == chunk_size:
+				final_chunks.append(''.join(current_chunk_words))
+				current_chunk_words = []
+				current_word_count = 0
+		# Add the last chunk.
+		if current_chunk_words:
+			final_chunks.append(''.join(current_chunk_words))
 	
-	return result_chunks
+	print(f'----------\n{final_chunks[0]}\n-----------\n')
+	return final_chunks
 
 
 
-def split_text_into_chunks(text, chunk_size=500):
+def split_text_into_chunks_2(text, chunk_size=500):
 	if len(text) <= chunk_size:
 		return [text]
 	
