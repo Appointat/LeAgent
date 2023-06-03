@@ -1,14 +1,12 @@
-## Import Python Packages
-from collections import deque
 import os
 import re
+from typing import List
+from collections import deque
 
 import openai
-
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-
 from qdrant_client import QdrantClient
 
 from prep_data import get_emmbedings
@@ -17,7 +15,7 @@ from prep_data import get_emmbedings
 
 # chatbot agent
 class ChatbotAgent:
-    def __init__(self, openai_api_key: str):
+    def __init__(self, openai_api_key: str, messages: List[str]):
         """
         Initializes an instance of the ChatbotAgent class.
 
@@ -35,7 +33,10 @@ class ChatbotAgent:
 
         # Initialize the chat history.
         self._max_chat_history_length = 20
-        self.chat_history = deque(maxlen=self._max_chat_history_length)
+        if not messages:
+            self.chat_history = deque(messages, maxlen=self._max_chat_history_length)
+        else:
+            self.chat_history = deque(maxlen=self._max_chat_history_length)
         self.query = ""
         self.answer = ""
         self.count = 1 # Count the number of times the chatbot has been called.

@@ -1,4 +1,6 @@
 import os
+import sys
+import json
 from dotenv import load_dotenv
 from multiprocessing import Pool
 from handle_multiprocessing import process_request
@@ -7,20 +9,49 @@ from chatbot_agent import ChatbotAgent
 
 
 def main():
+	# Get the messages (history of conversation) from the command line.
+	if len(sys.argv) < 2:
+		messages = []
+		mode = "LOCAL"
+	else:
+		message_string = sys.argv[1]
+		messages = json.loads(message_string)
+		mode = "SERVICE"
+
 	# Initialize the ChatbotAgent.
 	load_dotenv()
 	global chatbot_agent
-	chatbot_agent = ChatbotAgent(openai_api_key=os.getenv('OPENAI_API_KEY'))
+	chatbot_agent = ChatbotAgent(openai_api_key=os.getenv('OPENAI_API_KEY'), messages=messages)
 
 	# Start the conversation.
-	print("\n\n****Chatbot Agent Initialized****")
-	while chatbot_agent.count <= 20:
-		print("[{}]".format(chatbot_agent.count))
-		query = input("Query   : ")
+	if mode == "LOCAL":
+		print("\n\n****Chatbot Agent Initialized****")
+		while chatbot_agent.count <= 10:
+			print("[{}]".format(chatbot_agent.count))
+			query = input("Query   : ")
+			answer_list = []
+			link_list = []
+			# query it using content vector.
+			query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string()+"\nuser: "+query, 'Articles', top_k=4)
+			requests = [(chatbot_agent, article.payload["content"], chatbot_agent.convert_chat_history_to_string(), "", query, article.payload["link"]) for article in query_results]
+	
+			# Use a Pool to manage the processes.
+			with Pool(len(query_results)) as p:
+				results = p.map(process_request, requests)
+
+			# Results is a list of tuples of the form (answer, link).
+			answer_list, link_list = zip(*results)
+
+			combine_answer = chatbot_agent.prompt_combine_chain(query=query, answer_list=answer_list, link_list=link_list)
+			print(f'Query : {query}\n')
+			print(f'Answer: {combine_answer}\n')
+			chatbot_agent.update_chat_history(query, combine_answer)
+	else:
+		query = messages[-1]["text"]
 		answer_list = []
 		link_list = []
 		# query it using content vector.
-		query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string()+"\nuser: "+query, 'Articles', top_k=4)
+		query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string(), 'Articles', top_k=4)
 		requests = [(chatbot_agent, article.payload["content"], chatbot_agent.convert_chat_history_to_string(), "", query, article.payload["link"]) for article in query_results]
 	
 		# Use a Pool to manage the processes.
@@ -31,9 +62,9 @@ def main():
 		answer_list, link_list = zip(*results)
 
 		combine_answer = chatbot_agent.prompt_combine_chain(query=query, answer_list=answer_list, link_list=link_list)
-		print(f'Query : {query}\n')
-		print(f'Answer: {combine_answer}\n')
-		chatbot_agent.update_chat_history(query, combine_answer)
+		print(combine_answer)
+		#chatbot_agent.update_chat_history(query, combine_answer)
+
 
 
 
