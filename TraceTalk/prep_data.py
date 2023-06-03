@@ -26,7 +26,7 @@ def prep_data():
 	input_directory = r'TraceTalk\vector-db-persist-directory\resources' # Set the defualt directory.
 	
 	for file in os.listdir(input_directory):
-		if file.endswith('deep-learning.txt'):
+		if file.endswith('.txt'):
 			with open(os.path.join(input_directory, file), 'r') as f:
 				txt_content = f.read()
 				# Link all Markdown files extracted from the text file.
@@ -44,11 +44,10 @@ def prep_data():
 				)
 				md_content_request = requests.get(converted_link)
 				md_content = md_content_request.text if md_content_request.status_code == 200 else ''
-				
+				print(f"Processing {md_title}: {link}...")
+
 				md_content_split = split_text_into_chunks(md_content, chunk_size=1000)  # Split the text into chunks.
 				for text in md_content_split:
-					print (f'*************\n{converted_link}\n{text}')
-					input()
 					if not text:
 						continue
 					id = id + 1
@@ -168,7 +167,7 @@ def split_text_into_chunks(text, delimiter="###", chunk_size=500):
 			current_chunk_words.append(word)
 
             # When the number of words reaches chunk_size, add a new chunk.
-			if current_word_count == chunk_size:
+			if current_word_count >= chunk_size:
 				final_chunks.append(''.join(current_chunk_words))
 				current_chunk_words = []
 				current_word_count = 0
@@ -176,7 +175,6 @@ def split_text_into_chunks(text, delimiter="###", chunk_size=500):
 		if current_chunk_words:
 			final_chunks.append(''.join(current_chunk_words))
 	
-	print(f'----------\n{final_chunks[0]}\n-----------\n')
 	return final_chunks
 
 
