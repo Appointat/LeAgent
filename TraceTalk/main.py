@@ -10,12 +10,12 @@ from chatbot_agent import ChatbotAgent
 
 def main():
 	# Get the messages (history of conversation) from the command line.
-	if len(sys.argv) < 2:
+	if len(sys.argv) < 1:
 		messages = []
 		mode = "LOCAL"
 	else:
-		message_string = sys.argv[1]
-		messages = json.loads(message_string)
+		with open('TaceTalk/messages.json', 'r') as file:
+			messages = json.load(file)
 		mode = "SERVICE"
 
 	# Initialize the ChatbotAgent.
