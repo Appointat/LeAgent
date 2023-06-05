@@ -10,7 +10,7 @@ from chatbot_agent import ChatbotAgent
 
 def main():
 	# Get the messages (history of conversation) from the command line.
-	if len(sys.argv) < 1:
+	if len(sys.argv) < 2:
 		messages = []
 		mode = "LOCAL"
 	else:
