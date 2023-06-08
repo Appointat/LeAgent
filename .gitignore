@@ -1,0 +1,4 @@
+.env
+TraceTalk/__pycache__/chatbot_agent.cpython-311.pyc
+TraceTalk/__pycache__/handle_multiprocessing.cpython-311.pyc
+TraceTalk/__pycache__/prep_data.cpython-311.pyc
