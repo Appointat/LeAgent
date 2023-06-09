@@ -157,13 +157,13 @@ FINAL ANSWER IN ENGLISH:
             return combine_answer
 
 
-    # Update chat history.  
+    # Update chat history.
     def update_chat_history(self, query, answer):
         if (len(self.chat_history) == self._max_chat_history_length):
             self.chat_history.popleft()
         self.chat_history.append({
             "role": "system",
-            "content": f"You are now chatting with your AI assistant. The session id is {self.count}."
+            "content": f"The session id of conversation is {self.count}."
         })
             
         self.chat_history.append({
@@ -182,10 +182,14 @@ FINAL ANSWER IN ENGLISH:
         chat_string = "chatbot: I am TraceTalk, a cutting-edge chatbot designed to encapsulate the power of advanced AI technology, with a special focus on data science, machine learning, and deep learning. (https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding)\n"
         if len(self.chat_history) > 0:
             for message in self.chat_history:
-                chat_string += f"{message['role']}: {message['content']}\n"
+                if message['role'] == "chatbot":
+                    # Deleet the text (the text until to end) begin with "REFERENCE:" in the message['content'], because we do not need it.
+                    chat_string += f"{message['role']}: {message['content'].split('REFERENCE:', 1)[0]}    "
+                else:
+                    chat_string += f"{message['role']}: {message['content']}    "
         if new_query and new_answser:
-            chat_string += f"user: {new_query}\n"
-            chat_string += f"chatbot: {new_answser}\n"
+            chat_string += f"user: {new_query}    "
+            chat_string += f"chatbot: {new_answser}    "
         return chat_string
 
 
