@@ -38,7 +38,7 @@ def prep_data():
 
 				# Get the contents of the .md file.
 				converted_link = (
-					link.replace("github.com/open-academy", "open-academy.github.io")
+					link.replace("github.com/open-academy", "ocademy-ai.github.io")
 					.replace("tree/main", "_sources")
 					.replace("open-machine-learning-jupyter-book/", "")
 				)
