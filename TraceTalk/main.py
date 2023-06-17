@@ -2,7 +2,8 @@ import os
 import sys
 import json
 from dotenv import load_dotenv
-from multiprocessing import Pool
+# from multiprocessing import Pool
+from concurrent.futures import ThreadPoolExecutor
 from handle_multiprocessing import process_request
 from chatbot_agent import ChatbotAgent
 
@@ -37,8 +38,8 @@ def main():
 			requests = [(chatbot_agent, article.payload["content"], chatbot_agent.convert_chat_history_to_string(), "", query, article.payload["link"]) for article in query_results]
 	
 			# Use a Pool to manage the processes.
-			with Pool(len(query_results)) as p:
-				results = p.map(process_request, requests)
+			with ThreadPoolExecutor(max_workers=len(query_results)) as executor:
+				results = list(executor.map(process_request, requests))
 
 			# Results is a list of tuples of the form (answer, link).
 			answer_list, link_list = zip(*results)
@@ -63,9 +64,9 @@ def main():
 		answer_list, link_list = zip(*results)
 
 		combine_answer = chatbot_agent.prompt_combine_chain(query=query, answer_list=answer_list, link_list=link_list)
+
 		print(combine_answer)
 		# chatbot_agent.update_chat_history(query, combine_answer)
-
 
 
 
