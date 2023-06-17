@@ -9,19 +9,20 @@ from chatbot_agent import ChatbotAgent
 
 
 def main():
-	# Get the messages (history of conversation) from the command line.
-	if len(sys.argv) < 2:
-		messages = []
-		mode = "LOCAL"
-	else:
+    # Get the messages (history of conversation) from the command line.
+	messages = []
+	mode = "LOCAL" if len(sys.argv) < 2 else "SERVICE"
+	if mode == "SERVICE":
 		with open('TaceTalk/messages.json', 'r') as file:
 			messages = json.load(file)
-		mode = "SERVICE"
 
 	# Initialize the ChatbotAgent.
 	load_dotenv()
+	openai_api_key = os.getenv('OPENAI_API_KEY')
+	if not openai_api_key:
+		raise ValueError("OPENAI_API_KEY environment variable not set.")
 	global chatbot_agent
-	chatbot_agent = ChatbotAgent(openai_api_key=os.getenv('OPENAI_API_KEY'), messages=messages)
+	chatbot_agent = ChatbotAgent(openai_api_key=openai_api_key, messages=messages)
 
 	# Start the conversation.
 	if mode == "LOCAL":
