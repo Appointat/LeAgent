@@ -63,7 +63,7 @@ def main():
 
 		combine_answer = chatbot_agent.prompt_combine_chain(query=query, answer_list=answer_list, link_list=link_list)
 		print(combine_answer)
-		#chatbot_agent.update_chat_history(query, combine_answer)
+		# chatbot_agent.update_chat_history(query, combine_answer)
 
 
 
