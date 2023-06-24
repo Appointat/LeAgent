@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-# from multiprocessing import Pool
 from concurrent.futures import ThreadPoolExecutor
 from handle_multiprocessing import process_request
 from chatbot_agent import ChatbotAgent
