@@ -1,6 +1,4 @@
 import os
-import sys
-import json
 from dotenv import load_dotenv
 # from multiprocessing import Pool
 from concurrent.futures import ThreadPoolExecutor
@@ -15,8 +13,15 @@ def main():
 	openai_api_key = os.getenv('OPENAI_API_KEY')
 	if not openai_api_key:
 		raise ValueError("OPENAI_API_KEY environment variable not set.")
+	qdrant_url = os.getenv('QDRANT_URL')
+	if not qdrant_url:
+		raise ValueError("QDRANT_URL environment variable not set.")
+	qdrant_api_key = os.getenv('QDRANT_API_KEY')
+	if not qdrant_api_key:
+		raise ValueError("QDRANT_API_KEY environment variable not set.")
+	
 	global chatbot_agent
-	chatbot_agent = ChatbotAgent(openai_api_key=openai_api_key, messages=messages)
+	chatbot_agent = ChatbotAgent(openai_api_key=openai_api_key, qdrant_url=qdrant_url, qdrant_api_key=qdrant_api_key, messages=[])
 
 	# Start the conversation.
 	print("\n\n****Chatbot Agent Initialized****")

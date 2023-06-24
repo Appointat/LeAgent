@@ -20,6 +20,22 @@ def prep_data():
 	:param DataFrame: A pandas DataFrame of book data, with columns 'id', 'title', 'content',
     'link', 'inline_link_list', 'inline_title_list', and 'inline_content_list'.
 	"""
+
+	# Idex client.
+	qdrant_url = os.getenv('QDRANT_URL')
+	if not qdrant_url:
+		raise ValueError("QDRANT_URL environment variable not set.")
+	qdrant_api_key = os.getenv('QDRANT_API_KEY')
+	if not qdrant_api_key:
+		raise ValueError("QDRANT_API_KEY environment variable not set.")
+	# client = QdrantClient(path=r'TraceTalk\vector-db-persist-directory\Qdrant')
+	client = QdrantClient(
+		url=qdrant_url,
+		prefer_grpc=True,
+		api_key=qdrant_api_key,
+	)
+
+
 	book_data = [] # Create an empty list to store book data.
 	id = 0 # Set an initial value for the ID counter.
 
@@ -46,7 +62,7 @@ def prep_data():
 				md_content = md_content_request.text if md_content_request.status_code == 200 else ''
 				print(f"Processing {md_title}: {link}...")
 
-				md_content_split = split_text_into_chunks(md_content, chunk_size=1000)  # Split the text into chunks.
+				md_content_split = split_text_into_chunks(md_content, chunk_size=1500)  # Split the text into chunks.
 				for text in md_content_split:
 					if not text:
 						continue
@@ -62,16 +78,20 @@ def prep_data():
 					for inline_title, inline_link in inline_links_list:
 						if inline_link.endswith(('.exe', '.zip', '.rar')):
 							continue
-						try:
-							inline_content_request = requests.get(inline_link)
-							inline_content = inline_content_request.text if md_content_request.status_code == 200 else ''
-							inline_title_list.append(inline_title)
-
-							inline_content_list.append(inline_content)
-							inline_link_list.append(inline_link)
-						except requests.exceptions.RequestException as e:
-							warnings.warn(f"Failed to fetch content from link: {inline_link}\n{e}")
-							continue
+						retries = 2
+						while retries > 0:
+							try:
+								inline_content_request = requests.get(inline_link)
+								inline_content = inline_content_request.text if md_content_request.status_code == 200 else ''
+								inline_title_list.append(inline_title)
+								inline_content_list.append(inline_content)
+								inline_link_list.append(inline_link)
+								break
+							except requests.exceptions.RequestException as e:
+								retries -= 1
+								if retries <= 0:
+									warnings.warn(f"Failed to fetch content from link: {inline_link}\n{e}")
+								continue
 
 					# Add the book data to the list.
 					book_data.append({
@@ -89,8 +109,6 @@ def prep_data():
 	# Convert the book_data list into a pandas DataFrame.
 	book_data_df = pd.DataFrame(book_data)
 
-	# Idex client.
-	client = QdrantClient(path=r'TraceTalk\vector-db-persist-directory\Qdrant')
 	
 	# Upsert the data into the collection of the Qdrant database.
 	vector_size = 1536

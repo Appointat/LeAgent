@@ -15,7 +15,7 @@ from prep_data import get_emmbedings
 
 # chatbot agent
 class ChatbotAgent:
-    def __init__(self, openai_api_key: str, messages: List[str]):
+    def __init__(self, openai_api_key: str, qdrant_url: str, qdrant_api_key: str, messages: List[str]):
         """
         Initializes an instance of the ChatbotAgent class.
 
@@ -27,7 +27,12 @@ class ChatbotAgent:
         os.environ["OPENAI_API_KEY"] = self._openai_api_key
         self.llm = OpenAI(temperature=0.8, model_name="gpt-3.5-turbo")
 
-        self.client = QdrantClient(path=r'TraceTalk\vector-db-persist-directory\Qdrant')
+        # self.client = QdrantClient(path=r'TraceTalk\vector-db-persist-directory\Qdrant')
+        self.client = QdrantClient(
+                url=qdrant_url,
+                # prefer_grpc=True,
+                api_key=qdrant_api_key,
+        )
         self.client.get_collections()
         #pirnt("\nNumber of the collection: ".format(client.count(collection_name='Articles')))
 
@@ -46,7 +51,7 @@ class ChatbotAgent:
     def search_context_qdrant(self, query, collection_name, vector_name='content', top_k=10):
         # Create embedding vector from user query.
         embedded_query = get_emmbedings(query)
-    
+
         query_results = self.client.search(
             collection_name=collection_name,
             query_vector=(
@@ -61,17 +66,17 @@ class ChatbotAgent:
     # Prompt the chatbot.
     def prompt_chatbot(self):
         template="""
-Context information is below: 
+Context information is below:
 {context}
 =========
 Chat_history:
 {chat_history}
 =========
-Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES", the refernces do not include links). 
+Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES", the refernces do not include links).
 If you don't know the answer, just say that you don't know. Don't try to make up an answer.
 ALWAYS return a "SOURCES" part in your answer.
 Respond in English.
- 
+
 QUESTION: {qury}
 =========
 {summaries}
@@ -80,7 +85,7 @@ FINAL ANSWER IN ENGLISH:
             """
         prompt = PromptTemplate(template=template, input_variables=["context", "chat_history", "summaries", "qury"], validate_template=False) # Parameter the prompt template
         chain = LLMChain(
-            llm=self.llm, 
+            llm=self.llm,
             prompt=prompt,
             verbose=True,
         )
@@ -96,7 +101,7 @@ FINAL ANSWER IN ENGLISH:
             chat_history = self.convert_chat_history_to_string()
             template=f"""
 Now I will provide you with {n} chains, here is the definition of chain: each chain contains an answer and a link. The answers in the chain are the results from the links.
-In theory, each chain should produce a paragraph with links as references. It means that you MUST tell me from which references you make the summery. 
+In theory, each chain should produce a paragraph with links as references. It means that you MUST tell me from which references you make the summery.
 The smaller the number of the chain, the more important the information contained in the chain.
 Your final answer is verbose.
 But if the meaning of an answer in a certain chain is similar to 'I am not sure about your question' or 'I refuse to answer such a question', it means that this answer chain is deprecated, and you should actively ignore the information in this answer chain.
@@ -109,20 +114,20 @@ ReFERENCE can ONLY be a list of links, each link is a reference for a sentence i
 For exmaple:
     I provide the input text:
 		CHAIN 1:
-			CONTEXT: 
+			CONTEXT:
 				Machine learning algorithms build a model based on sample data, known as training data, in order to make predictions or decisions without being explicitly programmed to do so.
-			SOURCES: 
+			SOURCES:
 				Blabla.
-			REFERENCE: 
+			REFERENCE:
 				https://en.wikipedia.org/wiki/Machine_learning
 		CHAIN 2:
-			TEXT: A convolutional neural network (CNN) is a type of artificial neural network commonly used in deep learning for image recognition and classification. 
+			TEXT: A convolutional neural network (CNN) is a type of artificial neural network commonly used in deep learning for image recognition and classification.
 			REFERENCE: https://open-academy.github.io/machine-learning/_sources/deep-learning/image-classification.md
     Your output should be:
-		COMBINATION: 
-			Machine learning is a method of teaching computers to learn patterns in data without being explicitly programmed. It involves building models that can make predictions or decisions based on input data [1]. 
-			One type of machine learning model commonly used for sequential or time series data is recurrent neural networks (RNNs) [2]. 
-        REFERENCE: 
+		COMBINATION:
+			Machine learning is a method of teaching computers to learn patterns in data without being explicitly programmed. It involves building models that can make predictions or decisions based on input data [1].
+			One type of machine learning model commonly used for sequential or time series data is recurrent neural networks (RNNs) [2].
+        REFERENCE:
 			[1] https://en.wikipedia.org/wiki/Machine_learning
 			[2] https://open-academy.github.io/machine-learning/_sources/deep-learning/image-classification.md
 =========
@@ -137,18 +142,18 @@ user: {query}
             for i in range(n):
                 template += f"""
 ### CHAIN {i+1}
-CONTEXT: 
+CONTEXT:
 	{answer_list[i]}
-REFERENCE: 
+REFERENCE:
 	{link_list[i]}
 """
-            template += f"""     
+            template += f"""
 =========
 FINAL ANSWER IN ENGLISH:
-"""         
+"""
             prompt = PromptTemplate(template=template, input_variables=['query', 'chat_history'], validate_template=False) # Parameter the prompt template
             chain = LLMChain(
-                llm=self.llm, 
+                llm=self.llm,
                 prompt=prompt,
                 verbose=True,
             )
@@ -165,7 +170,7 @@ FINAL ANSWER IN ENGLISH:
             "role": "system",
             "content": f"The session id of conversation is {self.count}."
         })
-            
+
         self.chat_history.append({
             "role": "user",
             "content": query
@@ -229,7 +234,7 @@ FINAL ANSWER IN ENGLISH:
             ).choice[0].text.strip() # Choose the first answer whose score/probability is the highest.
         else:
             result_pipeline = self.chatbot_qa({"question": query_pipeline, "chat_history": self.chat_history})
-        
+
         if updateChatHistory:
             self.query = query_pipeline
             self.result = result_pipeline
@@ -237,7 +242,7 @@ FINAL ANSWER IN ENGLISH:
             return self.reslut
         else:
             return result_pipeline
-            
+
 
     # Prompt the chatbot for non libary content.
     def promtp_engineering_for_non_library_content(self, query): # please do not modify the value of query
