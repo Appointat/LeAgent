@@ -30,7 +30,7 @@ class ChatbotAgent:
         # self.client = QdrantClient(path=r'TraceTalk\vector-db-persist-directory\Qdrant')
         self.client = QdrantClient(
                 url=qdrant_url,
-                # prefer_grpc=True,
+                prefer_grpc=False,
                 api_key=qdrant_api_key,
         )
         self.client.get_collections()
@@ -67,23 +67,23 @@ class ChatbotAgent:
     def prompt_chatbot(self):
         template="""
 Context information is below:
-{context}
+{{context}}
 =========
 Chat_history:
-{chat_history}
+{{chat_history}}
 =========
 Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES", the refernces do not include links).
 If you don't know the answer, just say that you don't know. Don't try to make up an answer.
 ALWAYS return a "SOURCES" part in your answer.
 Respond in English.
 
-QUESTION: {qury}
+QUESTION: {{query}}
 =========
-{summaries}
+{{summaries}}
 =========
 FINAL ANSWER IN ENGLISH:
             """
-        prompt = PromptTemplate(template=template, input_variables=["context", "chat_history", "summaries", "qury"], validate_template=False) # Parameter the prompt template
+        prompt = PromptTemplate(template=template, input_variables=["context", "chat_history", "summaries", "query"], template_format="jinja2", validate_template=False) # Parameter the prompt template
         chain = LLMChain(
             llm=self.llm,
             prompt=prompt,
@@ -133,25 +133,26 @@ For exmaple:
 =========
 """
             template += """
-chat_history
-{chat_history}
-user: {query}
+QUESTION: {{query}}
+Chat_history: 
+{{chat_history}}
+user: {{query}}
 
 =========
-        """
-            for i in range(n):
-                template += f"""
-### CHAIN {i+1}
-CONTEXT:
-	{answer_list[i]}
-REFERENCE:
-	{link_list[i]}
 """
+            for i in range(1, n):
+                template += f"""
+### CHAIN {i+1}:
+CONTEXT:
+    {answer_list[i]}
+REFERENCE:
+    {link_list[i]}
+    """
             template += f"""
 =========
 FINAL ANSWER IN ENGLISH:
 """
-            prompt = PromptTemplate(template=template, input_variables=['query', 'chat_history'], validate_template=False) # Parameter the prompt template
+            prompt = PromptTemplate(template=template, input_variables=["query", "chat_history"], template_format="jinja2", validate_template=False) # Parameter the prompt template
             chain = LLMChain(
                 llm=self.llm,
                 prompt=prompt,
