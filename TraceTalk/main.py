@@ -7,7 +7,7 @@ from chatbot_agent import ChatbotAgent
 
 
 
-def main():
+def main(message=[]):
 	# Initialize the ChatbotAgent.
 	load_dotenv()
 	openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -22,10 +22,8 @@ def main():
 	
 	
 	messages = []
-	if len(sys.argv) > 1:
+	if not message and len(sys.argv) > 1:
 		message = sys.argv[1]
-	else:
-		message = []
 	messages.append(message)
 
 
