@@ -1,5 +1,6 @@
 import os
 import warnings
+import ast
 from dotenv import load_dotenv 
 
 import pandas as pd
@@ -13,29 +14,13 @@ from qdrant_client.http import models as rest
 
 
 
-def prep_data():
+def prep_book_data(csv_file_path=r'TraceTalk\vector-db-persist-directory\book dada\book data.csv'):
 	"""
     This function prepares the book data by extracting content from Markdown files and their inline links.
 
 	:param DataFrame: A pandas DataFrame of book data, with columns 'id', 'title', 'content',
     'link', 'inline_link_list', 'inline_title_list', and 'inline_content_list'.
 	"""
-
-	# Idex client.
-	qdrant_url = os.getenv('QDRANT_URL')
-	if not qdrant_url:
-		raise ValueError("QDRANT_URL environment variable not set.")
-	qdrant_api_key = os.getenv('QDRANT_API_KEY')
-	if not qdrant_api_key:
-		raise ValueError("QDRANT_API_KEY environment variable not set.")
-	# client = QdrantClient(path=r'TraceTalk\vector-db-persist-directory\Qdrant')
-	client = QdrantClient(
-		url=qdrant_url,
-		prefer_grpc=True,
-		api_key=qdrant_api_key,
-	)
-
-
 	book_data = [] # Create an empty list to store book data.
 	id = 0 # Set an initial value for the ID counter.
 
@@ -62,36 +47,36 @@ def prep_data():
 				md_content = md_content_request.text if md_content_request.status_code == 200 else ''
 				print(f"Processing {md_title}: {link}...")
 
-				md_content_split = split_text_into_chunks(md_content, chunk_size=1500)  # Split the text into chunks.
+				md_content_split = split_text_into_chunks(md_content, chunk_size=500)  # Split the text into chunks.
 				for text in md_content_split:
 					if not text:
 						continue
 					id = id + 1
 
 					# Get the inline contents of the .md file.
-					inline_title_list = []
-					inline_content_list = []
+					# inline_title_list = []
+					# inline_content_list = []
 
-					inline_link_list = []
-					inline_links_list = re.findall(r'\[([^\]]+?)\]\((https?://[^\)]+?)\)', text)
+					# inline_link_list = []
+					# inline_links_list = re.findall(r'\[([^\]]+?)\]\((https?://[^\)]+?)\)', text)
 
-					for inline_title, inline_link in inline_links_list:
-						if inline_link.endswith(('.exe', '.zip', '.rar')):
-							continue
-						retries = 2
-						while retries > 0:
-							try:
-								inline_content_request = requests.get(inline_link)
-								inline_content = inline_content_request.text if md_content_request.status_code == 200 else ''
-								inline_title_list.append(inline_title)
-								inline_content_list.append(inline_content)
-								inline_link_list.append(inline_link)
-								break
-							except requests.exceptions.RequestException as e:
-								retries -= 1
-								if retries <= 0:
-									warnings.warn(f"Failed to fetch content from link: {inline_link}\n{e}")
-								continue
+					# for inline_title, inline_link in inline_links_list:
+					# 	if inline_link.endswith(('.exe', '.zip', '.rar')):
+					# 		continue
+					# 	retries = 2
+					# 	while retries > 0:
+					# 		try:
+					# 			inline_content_request = requests.get(inline_link)
+					# 			inline_content = inline_content_request.text if md_content_request.status_code == 200 else ''
+					# 			inline_title_list.append(inline_title)
+					# 			inline_content_list.append(inline_content)
+					# 			inline_link_list.append(inline_link)
+					# 			break
+					# 		except requests.exceptions.RequestException as e:
+					# 			retries -= 1
+					# 			if retries <= 0:
+					# 				warnings.warn(f"Failed to fetch content from link: {inline_link}\n{e}")
+					# 			continue
 
 					# Add the book data to the list.
 					book_data.append({
@@ -101,16 +86,46 @@ def prep_data():
 						'content': text, # Further optimization can be done by splitting files to reduce text volume.
 						'content_vector': get_emmbedings(text), # Further optimization can be done by splitting files to reduce text volume.
 						'link': converted_link,
-						'inline_title_list': inline_title_list,
-						'inline_content_list': inline_content_list,
-						'inline_link_list': inline_link_list,
+						# 'inline_title_list': inline_title_list,
+						# 'inline_content_list': inline_content_list,
+						# 'inline_link_list': inline_link_list,
 					})
 
 	# Convert the book_data list into a pandas DataFrame.
 	book_data_df = pd.DataFrame(book_data)
+	print('Shape of the book data DataFrame:', book_data_df.shape)
+	book_data_df.to_csv(csv_file_path, index=False)
 
+
+
+def update_collection_to_database(csv_file_path=r'TraceTalk\vector-db-persist-directory\book dada\book data.csv'):
+	"""
+	This function updates the Qdrant database collection with the book data.
+	"""
+	# Load the book data DataFrame.
+	book_data_df = pd.read_csv(csv_file_path)
 	
-	# Upsert the data into the collection of the Qdrant database.
+
+	def convert_string_to_list(s):
+		return ast.literal_eval(s)
+	book_data_df['title_vector'] = book_data_df['title_vector'].apply(convert_string_to_list)
+	book_data_df['content_vector'] = book_data_df['content_vector'].apply(convert_string_to_list)
+
+	# Idex client.
+	qdrant_url = os.getenv('QDRANT_URL')
+	if not qdrant_url:
+		raise ValueError("QDRANT_URL environment variable not set.")
+	qdrant_api_key = os.getenv('QDRANT_API_KEY')
+	if not qdrant_api_key:
+		raise ValueError("QDRANT_API_KEY environment variable not set.")
+	# client = QdrantClient(path=r'TraceTalk\vector-db-persist-directory\Qdrant')
+	client = QdrantClient(
+		url=qdrant_url,
+		prefer_grpc=False,
+		api_key=qdrant_api_key,
+	)
+
+	# Create a new collection of the Qdrant database.
 	vector_size = 1536
 	client.recreate_collection(
 		collection_name='Articles',
@@ -134,24 +149,32 @@ def prep_data():
 		}
 	)
 
-	client.upsert(
-        collection_name='Articles',
-        points=[
-            rest.PointStruct(
-                id=row['id'],
-                vector={
-                    'title': row['title_vector'],
-                    'content': row['content_vector'],
-                    #'inline_title_vector': row['inline_title_list'],
-                    #'inline_content_vector': row['inline_content_list'],
-                },
-                payload=row.to_dict(),
-            )
-            for _, row in book_data_df.iterrows()
-        ],
-    )
-	
-	return book_data_df
+	# Upsert the data into the collection of the Qdrant database.
+	batch_size = 50  # Adjust this value to fit within Qdrant's size limits.
+	# Divide data into batches.
+	batches = [book_data_df[i:i+batch_size] for i in range(0, book_data_df.shape[0], batch_size)]
+
+	for batch in batches:
+		points = []
+		for _, row in batch.iterrows():
+			point = rest.PointStruct(
+				id=row['id'],
+				vector={
+					'title': row['title_vector'],
+					'content': row['content_vector'],
+					#'inline_title_vector': row['inline_title_list'],
+					#'inline_content_vector': row['inline_content_list'],
+				},
+				payload=row.to_dict(),
+			)
+			points.append(point)
+			print(f"Upserting point with id: {row['id']}")
+
+		client.upsert(
+			collection_name='Articles',
+			points=points,
+		)
+
 
 
 
@@ -167,11 +190,18 @@ def get_emmbedings(text):
 
 
 
-def split_text_into_chunks(text, delimiter="###", chunk_size=500):
-	pattern = r"---.*?---"
-	text = re.sub(pattern, "", text, flags=re.DOTALL)
-	chunks = re.split('({})'.format(delimiter), text)
-	chunks = ['{}{}'.format(delimiter, chunk) if i % 2 else chunk for i, chunk in enumerate(chunks)]
+def split_text_into_chunks(text, delimiter="\n# ", chunk_size=500):
+	begin_pattern = r"---.*?---"
+	text = re.sub(begin_pattern, "", text, flags=re.DOTALL)
+	text = "\n" + text
+
+	# Remove code cells from text.
+	code_pattern = r"(```{code-cell}.*?```)"
+	code_cells = re.findall(code_pattern, text, flags=re.DOTALL)
+	text = re.sub(code_pattern, "TEMPLATE_CODE_CELL\n", text, flags=re.DOTALL)
+
+	chunks = re.split('((?:^|\n)(?={}(?!#)))'.format(delimiter), text, flags=re.MULTILINE)
+	chunks = [chunk for chunk in chunks if chunk.strip()]
 
 	final_chunks = []
 	for chunk in chunks:
@@ -192,7 +222,37 @@ def split_text_into_chunks(text, delimiter="###", chunk_size=500):
 		# Add the last chunk.
 		if current_chunk_words:
 			final_chunks.append(''.join(current_chunk_words))
-	
+
+	# Count the number of words in a string.
+	count_words_in_string = lambda s: len(s.split())
+
+	for i, chunk in enumerate(final_chunks):
+		try:
+			while "TEMPLATE_CODE_CELL" in chunk and code_cells:
+				code_cell = code_cells.pop(0)
+				
+				# Split the code cell into lines.
+				code_cell_lines = code_cell.split('\n')
+				
+				# If the code cell can be inserted without exceeding the chunk size, do it.
+				if count_words_in_string(chunk.replace("TEMPLATE_CODE_CELL", code_cell, 1)) <= 1500: # chunk_size
+					chunk = chunk.replace("TEMPLATE_CODE_CELL", code_cell, 1)
+				# If not, insert as many lines as possible.
+				else:
+					temp_chunk = chunk
+					for line in code_cell_lines:
+						# If the next line can be inserted without exceeding the chunk size, do it.
+						if count_words_in_string(temp_chunk.replace("TEMPLATE_CODE_CELL", line, 1)) <= 1500: # chunk_size
+							temp_chunk = temp_chunk.replace("TEMPLATE_CODE_CELL", line, 1)
+						# If not, put the remaining lines back into code_cells and stop.
+						else:
+							break
+					chunk = temp_chunk
+
+			final_chunks[i] = chunk
+		except IndexError:
+			warnings.warn("Code cells mismatch. The number of 'TEMPLATE_CODE_CELL' placeholders and actual code cells do not match.")
+
 	return final_chunks
 
 
