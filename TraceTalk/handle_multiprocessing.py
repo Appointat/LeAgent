@@ -8,7 +8,7 @@ def process_request(params):
             context=context,
             chat_history=chat_history,
             summaries=summaries,
-            qury=query,
+            query=query,
         )
     finally:
         # Release resources here, for example:
