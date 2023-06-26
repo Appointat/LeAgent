@@ -1,5 +1,6 @@
 import os
 import sys
+from enum import Enum
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 from handle_multiprocessing import process_request
@@ -7,7 +8,20 @@ from chatbot_agent import ChatbotAgent
 
 
 
-def main(message=[]):
+class Role(Enum):
+    ASSISTANT = "assistant"
+    USER = "user"
+
+
+
+class Message:
+    def __init__(self, role: Role, content: str):
+        self.role = role
+        self.content = content
+
+
+
+def main(message="", messages=[""]):
 	# Initialize the ChatbotAgent.
 	load_dotenv()
 	openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -22,9 +36,8 @@ def main(message=[]):
 	
 
 	use_REST_API = False	
-	if message:
+	if message or messages:
 		use_REST_API = True
-	messages = []
 	if not message and len(sys.argv) > 1:
 		message = sys.argv[1]
 	messages.append(message)

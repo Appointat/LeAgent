@@ -39,17 +39,20 @@ class ChatbotAgent:
                 api_key=qdrant_api_key,
         )
         self.client.get_collections()
-        #pirnt("\nNumber of the collection: ".format(client.count(collection_name='Articles')))
 
         # Initialize the chat history.
+        self.count = 1 # Count the number of times the chatbot has been called.
         self._max_chat_history_length = 20
-        if not messages:
-            self.chat_history = deque(messages, maxlen=self._max_chat_history_length)
-        else:
-            self.chat_history = deque(maxlen=self._max_chat_history_length)
+        self.chat_history = deque(maxlen=self._max_chat_history_length)
+        for i in range(len(messages)):
+            if i % 2 == 0:
+                tmp_query = messages[i]
+            else:
+                tmp_answer = messages[i]
+                self.update_chat_history(query=tmp_query, answer=tmp_answer)
+        
         self.query = ""
         self.answer = ""
-        self.count = 1 # Count the number of times the chatbot has been called.
 
 
     # Search agent based on Qdrant.

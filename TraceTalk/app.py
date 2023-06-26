@@ -23,10 +23,13 @@ def handler():
     try:
         data = request.get_json()
         print(f"Received data: {data}")
-        message = data.get('message')  # Get 'message' field from the JSON object
-        print(f"Received message: {message}")
+        messages = data.get('messages')  # Get 'message' field from the JSON object
+        print(f"Received message: {messages}")
+
+        messages_str_list = [message.get('content') for message in messages]
+        
         # send the message to OpenAI API
-        answer = agent(message=message)
+        answer = agent(messages=messages_str_list)
    
         return jsonify({'answer': answer})
     except Exception as e:
