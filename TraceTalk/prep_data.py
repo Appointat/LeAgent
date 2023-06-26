@@ -146,7 +146,10 @@ def update_collection_to_database(csv_file_path=r'TraceTalk\vector-db-persist-di
 			#    distance=rest.Distance.COSINE,
 			#    size=vector_size,
 			#),
-		}
+		},
+		optimizers_config=rest.OptimizersConfigDiff(
+			indexing_threshold=0,
+		),
 	)
 
 	# Upsert the data into the collection of the Qdrant database.
