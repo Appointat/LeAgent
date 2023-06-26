@@ -2,11 +2,15 @@ import os
 import re
 from typing import List
 from collections import deque
+from jinja2 import Template
 
 import openai
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
+from langchain.callbacks.streaming_stdout_final_only import (
+    FinalStreamingStdOutCallbackHandler,
+)
 from qdrant_client import QdrantClient
 
 from prep_data import get_emmbedings
@@ -26,6 +30,7 @@ class ChatbotAgent:
         self._openai_api_key = openai_api_key
         os.environ["OPENAI_API_KEY"] = self._openai_api_key
         self.llm = OpenAI(temperature=0.8, model_name="gpt-3.5-turbo")
+        self.llm_streaming = OpenAI(streaming=True, callbacks=[FinalStreamingStdOutCallbackHandler()], temperature=0.8, model_name="gpt-3.5-turbo")
 
         # self.client = QdrantClient(path=r'TraceTalk\vector-db-persist-directory\Qdrant')
         self.client = QdrantClient(
@@ -152,15 +157,16 @@ REFERENCE:
 =========
 FINAL ANSWER IN ENGLISH:
 """
-            prompt = PromptTemplate(template=template, input_variables=["query", "chat_history"], template_format="jinja2", validate_template=False) # Parameter the prompt template
-            chain = LLMChain(
-                llm=self.llm,
-                prompt=prompt,
-                verbose=True,
-            )
-            combine_answer = chain.run(query=query, chat_history=chat_history)
-            combine_answer = self.convert_links_in_text(combine_answer)
-            return combine_answer
+            # prompt = PromptTemplate(template=template, input_variables=["query", "chat_history"], template_format="jinja2", validate_template=False) # Parameter the prompt template
+            prompt = Template(template).render(query=query, chat_history=chat_history)
+            # chain = LLMChain(
+            #     llm=self.llm_streaming,
+            #     prompt=prompt,
+            #     verbose=True,
+            # )
+            # combine_answer = self.llm_streaming(prompt)
+            # combine_answer = self.convert_links_in_text(combine_answer)
+            return self.convert_links_in_text(prompt)
 
 
     # Update chat history.
