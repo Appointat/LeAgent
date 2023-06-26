@@ -20,7 +20,10 @@ def main(message=[]):
 	if not qdrant_api_key:
 		raise ValueError("QDRANT_API_KEY environment variable not set.")
 	
-	
+
+	use_REST_API = False	
+	if message:
+		use_REST_API = True
 	messages = []
 	if not message and len(sys.argv) > 1:
 		message = sys.argv[1]
@@ -32,7 +35,7 @@ def main(message=[]):
 
 
 	# Start the conversation.
-	if not message:
+	if not message and not use_REST_API:
 		print("\n\n****Chatbot Agent Initialized****")
 		while chatbot_agent.count <= 10:
 			print("[{}]".format(chatbot_agent.count))
@@ -70,8 +73,10 @@ def main(message=[]):
 		answer_list, link_list = zip(*results)
 
 		combine_answer = chatbot_agent.prompt_combine_chain(query=query, answer_list=answer_list, link_list=link_list)
-		print(f'Answer: {combine_answer}\n')
+		# print(f'Answer: {combine_answer}\n')
 		chatbot_agent.update_chat_history(query, combine_answer)
+		return combine_answer
+
 
 
 if __name__ == "__main__":
