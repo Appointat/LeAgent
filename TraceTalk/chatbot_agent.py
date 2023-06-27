@@ -73,7 +73,7 @@ class ChatbotAgent:
 
     # Prompt the chatbot.
     def prompt_chatbot(self):
-        template="""
+        template = f"""
 Context information is below:
 {{context}}
 =========
@@ -107,7 +107,7 @@ FINAL ANSWER IN ENGLISH:
             return "I'm sorry, there is not enough information to provide a meaningful answer to your question. Can you please provide more context or a specific question?"
         else:
             chat_history = self.convert_chat_history_to_string()
-            template=f"""
+            template = f"""
 Now I will provide you with {n} chains, here is the definition of chain: each chain contains an answer and a link. The answers in the chain are the results from the links.
 In theory, each chain should produce a paragraph with links as references. It means that you MUST tell me from which references you make the summery.
 The smaller the number of the chain, the more important the information contained in the chain.
@@ -143,8 +143,7 @@ For exmaple:
             template += """
 QUESTION: {{query}}
 Chat_history: 
-{{chat_history}}
-user: {{query}}
+{{chat_history}}[user]: {{query}}
 
 =========
 """
@@ -170,6 +169,7 @@ FINAL ANSWER IN ENGLISH:
             # combine_answer = self.llm_streaming(prompt)
             # combine_answer = self.convert_links_in_text(combine_answer)
             return self.convert_links_in_text(prompt)
+            # return combine_answer
 
 
     # Update chat history.
@@ -194,17 +194,17 @@ FINAL ANSWER IN ENGLISH:
 
     # Convert chat history to string.
     def convert_chat_history_to_string(self, new_query="", new_answser=""):
-        chat_string = "chatbot: I am TraceTalk, a cutting-edge chatbot designed to encapsulate the power of advanced AI technology, with a special focus on data science, machine learning, and deep learning. (https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding)\n"
+        chat_string = "[chatbot]: I am TraceTalk, a cutting-edge chatbot designed to encapsulate the power of advanced AI technology, with a special focus on data science, machine learning, and deep learning. (https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding)\n"
         if len(self.chat_history) > 0:
             for message in self.chat_history:
                 if message['role'] == "chatbot":
                     # Deleet the text (the text until to end) begin with "REFERENCE:" in the message['content'], because we do not need it.
-                    chat_string += f"{message['role']}: {message['content'].split('REFERENCE:', 1)[0]}    "
+                    chat_string += f"[{message['role']}]: {message['content'].split('REFERENCE:', 1)[0]} \n"
                 else:
-                    chat_string += f"{message['role']}: {message['content']}    "
+                    chat_string += f"[{message['role']}]: {message['content']} \n"
         if new_query and new_answser:
-            chat_string += f"user: {new_query}    "
-            chat_string += f"chatbot: {new_answser}    "
+            chat_string += f"[user]: {new_query} \n"
+            chat_string += f"[chatbot]: {new_answser} \n"
         return chat_string
 
 

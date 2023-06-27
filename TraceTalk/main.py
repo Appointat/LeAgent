@@ -38,6 +38,7 @@ def main(message="", messages=[""]):
 	use_REST_API = False	
 	if message or messages:
 		use_REST_API = True
+		message = messages.pop(-1)
 	if not message and len(sys.argv) > 1:
 		message = sys.argv[1]
 	messages.append(message)
@@ -56,8 +57,8 @@ def main(message="", messages=[""]):
 			answer_list = []
 			link_list = []
 			# Query it using content vector.
-			# query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string()+"\nuser: "+query, 'Articles', top_k=4)
-			query_results = chatbot_agent.search_context_qdrant(query, 'Articles', top_k=4)
+			query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string()+"\nuser: "+query, 'Articles', top_k=4)
+			# query_results = chatbot_agent.search_context_qdrant(query, 'Articles', top_kk=4)
 			requests = [(chatbot_agent, article.payload["content"], chatbot_agent.convert_chat_history_to_string(), "", query, article.payload["link"]) for article in query_results]
 
 			# Use a Pool to manage the processes.
@@ -76,7 +77,8 @@ def main(message="", messages=[""]):
 		answer_list = []
 		link_list = []
 		# query it using content vector.
-		query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string()+"\nuser: "+query, 'Articles', top_k=4)
+		# query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string()+"\nuser: "+query, 'Articles', top_k=4)
+		query_results = chatbot_agent.search_context_qdrant(query, 'Articles', top_k=4)
 		requests = [(chatbot_agent, article.payload["content"], chatbot_agent.convert_chat_history_to_string(), "", query, article.payload["link"]) for article in query_results]
 
 		# Use a Pool to manage the processes.
