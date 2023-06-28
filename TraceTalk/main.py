@@ -79,7 +79,7 @@ def main(message="", messages=[""]):
 		# query it using content vector.
 		# query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string()+"\nuser: "+query, 'Articles', top_k=4)
 		query_results = chatbot_agent.search_context_qdrant(query, 'Articles', top_k=4)
-		requests = [(chatbot_agent, article.payload["content"], chatbot_agent.convert_chat_history_to_string(), "", query, article.payload["link"]) for article in query_results]
+		requests = [(chatbot_agent, article.payload["content"], chatbot_agent.convert_chat_history_to_string(user_only=True), "", query, article.payload["link"], article.score) for article in query_results]
 
 		# Use a Pool to manage the processes.
 		with ThreadPoolExecutor(max_workers=len(query_results)) as executor:
@@ -91,6 +91,16 @@ def main(message="", messages=[""]):
 		combine_answer = chatbot_agent.prompt_combine_chain(query=query, answer_list=answer_list, link_list=link_list)
 		# print(f'Answer: {combine_answer}\n')
 		chatbot_agent.update_chat_history(query, combine_answer)
+
+		print(f'**********************query_results: {answer_list }')
+		for qury_result in query_results:
+			print(f'**********************query_result score: {qury_result.score}')
+			convert_link = qury_result.payload["link"].replace('_sources', '').replace('.md', '.html')
+			convert_content = qury_result.payload["content"].replace('_sources', '').replace('.md', '.html')
+			# print(f'query_result payload: {chatbot_agent.convert_links_in_text(convert_link)}')
+			# print(f'query_result payload: {convert_content}')
+
+
 		return combine_answer
 
 
