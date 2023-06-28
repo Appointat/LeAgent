@@ -73,24 +73,24 @@ class ChatbotAgent:
 
     # Prompt the chatbot.
     def prompt_chatbot(self):
-        template = f"""
-Context information is below:
+        template = """
+CONTEXT information is below:
 {{context}}
 =========
 Chat_history:
 {{chat_history}}
 =========
-Given the following extracted parts of a long document and a question, create a final answer with references ("SOURCES", the refernces do not include links).
-If you don't know the answer, just say that you don't know. Don't try to make up an answer.
+Given the following extracted parts of a long document and a QUESTION, create a final answer with references ("SOURCES", the refernces do not include links).
+If you don't know the answer, just say that you don't know. Don't try to make up an answer. 
+If the QUESTION is not associate with the CONTEXT, you can say "SORRY" and say that you need more information to answer it, or you can enven refuse to answer it.
 ALWAYS return a "SOURCES" part in your answer.
-Respond in English.
 
 QUESTION: {{query}}
 =========
 {{summaries}}
 =========
-FINAL ANSWER IN ENGLISH:
-            """
+FINAL ANSWER THE QUESTION {{query}}, language used for answers is CONSISTENT with QUESTION:
+"""
         prompt = PromptTemplate(template=template, input_variables=["context", "chat_history", "summaries", "query"], template_format="jinja2", validate_template=False) # Parameter the prompt template
         chain = LLMChain(
             llm=self.llm,
@@ -147,7 +147,7 @@ Chat_history:
 
 =========
 """
-            for i in range(1, n):
+            for i in range(n):
                 template += f"""
 ### CHAIN {i+1}:
 CONTEXT:
@@ -155,9 +155,9 @@ CONTEXT:
 REFERENCE:
     {link_list[i]}
     """
-            template += f"""
+            template += """
 =========
-FINAL ANSWER IN ENGLISH:
+ANSWER THE QUESTION {{query}}, FINAL A VERBOSE ANSWER, language used for answers is CONSISTENT with QUESTION:
 """
             # prompt = PromptTemplate(template=template, input_variables=["query", "chat_history"], template_format="jinja2", validate_template=False) # Parameter the prompt template
             prompt = Template(template).render(query=query, chat_history=chat_history)
@@ -168,6 +168,12 @@ FINAL ANSWER IN ENGLISH:
             # )
             # combine_answer = self.llm_streaming(prompt)
             # combine_answer = self.convert_links_in_text(combine_answer)
+            if (prompt.count("sorry") >= 2):
+                combine_answer = ""
+                for answer in answer_list:
+                    combine_answer += answer
+                return combine_answer
+                # return answer_list[0]
             return self.convert_links_in_text(prompt)
             # return combine_answer
 
@@ -193,14 +199,16 @@ FINAL ANSWER IN ENGLISH:
 
 
     # Convert chat history to string.
-    def convert_chat_history_to_string(self, new_query="", new_answser=""):
+    def convert_chat_history_to_string(self, new_query="", new_answser="", user_only=False, chatbot_only=False):
+        if sum([bool(new_query), bool(new_answser)]) == 2:
+            raise ValueError("user_only and chatbot_only cannot be True at the same time.")
         chat_string = "[chatbot]: I am TraceTalk, a cutting-edge chatbot designed to encapsulate the power of advanced AI technology, with a special focus on data science, machine learning, and deep learning. (https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding)\n"
         if len(self.chat_history) > 0:
             for message in self.chat_history:
-                if message['role'] == "chatbot":
+                if message['role'] == "chatbot" and ~user_only:
                     # Deleet the text (the text until to end) begin with "REFERENCE:" in the message['content'], because we do not need it.
                     chat_string += f"[{message['role']}]: {message['content'].split('REFERENCE:', 1)[0]} \n"
-                else:
+                elif message['role'] == "user" and ~chatbot_only:
                     chat_string += f"[{message['role']}]: {message['content']} \n"
         if new_query and new_answser:
             chat_string += f"[user]: {new_query} \n"
