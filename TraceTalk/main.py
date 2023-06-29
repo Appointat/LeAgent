@@ -79,7 +79,29 @@ def main(message="", messages=[""]):
 		# query it using content vector.
 		# query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string()+"\nuser: "+query, 'Articles', top_k=4)
 		query_results = chatbot_agent.search_context_qdrant(query, 'Articles', top_k=4)
-		requests = [(chatbot_agent, article.payload["content"], chatbot_agent.convert_chat_history_to_string(user_only=True), "", query, article.payload["link"], article.score) for article in query_results]
+
+		# tbot_agent, article.payload["content"] + chatbot_agent.client.retrieve(collection_name="Articles", ids=[article.id]).payload["content"], chatbot_agent.convert_chat_history_to_string(user_only=True), "", query, article.payload["link"], article.score) for article in query_results]
+		article_ids_plus_one = [article.id + 1 for article in query_results]
+		article_ids_minus_one = [max(article.id - 1, 0) for article in query_results]
+		retrieved_articles_plus_one = chatbot_agent.client.retrieve(collection_name="Articles", ids=article_ids_plus_one)
+		retrieved_articles_minus_one = chatbot_agent.client.retrieve(collection_name="Articles", ids=article_ids_minus_one)
+		requests = [
+			(
+				chatbot_agent,
+				# Concatenate the existing article content with the content retrieved using the article's id.
+				# 'retrieve' function returns a list of points, so we need to access the first (and in this case, only) result with '[0]'.
+				# retrieved_articles_minus_one[i].payload["content"] + "\n"
+				article.payload["content"]
+				+ "\n" + retrieved_articles_plus_one[i].payload["content"],
+				# Convert the chat history to string, including only user's side of the chat (user_only=True).
+				chatbot_agent.convert_chat_history_to_string(user_only=True),
+				"",
+				query,
+				article.payload["link"],
+				article.score
+			) 
+			for i, article in enumerate(query_results)  # Looping over each article in the query results.
+		]
 
 		# Use a Pool to manage the processes.
 		with ThreadPoolExecutor(max_workers=len(query_results)) as executor:
