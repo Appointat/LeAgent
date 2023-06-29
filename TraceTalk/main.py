@@ -90,7 +90,7 @@ def main(message="", messages=[""]):
 				chatbot_agent,
 				# Concatenate the existing article content with the content retrieved using the article's id.
 				# 'retrieve' function returns a list of points, so we need to access the first (and in this case, only) result with '[0]'.
-				# retrieved_articles_minus_one[i].payload["content"] + "\n"
+				retrieved_articles_minus_one[i].payload["content"] + "\n" +
 				article.payload["content"]
 				+ "\n" + retrieved_articles_plus_one[i].payload["content"],
 				# Convert the chat history to string, including only user's side of the chat (user_only=True).
@@ -113,15 +113,6 @@ def main(message="", messages=[""]):
 		combine_answer = chatbot_agent.prompt_combine_chain(query=query, answer_list=answer_list, link_list=link_list)
 		# print(f'Answer: {combine_answer}\n')
 		chatbot_agent.update_chat_history(query, combine_answer)
-
-		print(f'**********************query_results: {answer_list }')
-		for qury_result in query_results:
-			print(f'**********************query_result score: {qury_result.score}')
-			convert_link = qury_result.payload["link"].replace('_sources', '').replace('.md', '.html')
-			convert_content = qury_result.payload["content"].replace('_sources', '').replace('.md', '.html')
-			# print(f'query_result payload: {chatbot_agent.convert_links_in_text(convert_link)}')
-			# print(f'query_result payload: {convert_content}')
-
 
 		return combine_answer
 
