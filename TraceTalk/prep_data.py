@@ -260,21 +260,21 @@ def split_text_into_chunks(text, delimiter="\n# ", chunk_size=500):
 
 
 
-def split_text_into_chunks_2(text, chunk_size=500):
-	if len(text) <= chunk_size:
-		return [text]
+# def split_text_into_chunks_2(text, chunk_size=500):
+# 	if len(text) <= chunk_size:
+# 		return [text]
 	
-	words = text.split()
-	chunks = []
-	current_chunk = []
+# 	words = text.split()
+# 	chunks = []
+# 	current_chunk = []
 	
-	for word in words:
-		current_chunk.append(word)
+# 	for word in words:
+# 		current_chunk.append(word)
 		
-		if len(current_chunk) == chunk_size:
-			chunks.append(' '.join(current_chunk))
-			current_chunk = []
-	if current_chunk:
-		chunks.append(' '.join(current_chunk))
+# 		if len(current_chunk) == chunk_size:
+# 			chunks.append(' '.join(current_chunk))
+# 			current_chunk = []
+# 	if current_chunk:
+# 		chunks.append(' '.join(current_chunk))
 		
-	return chunks
+# 	return chunks
