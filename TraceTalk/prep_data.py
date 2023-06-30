@@ -245,7 +245,7 @@ def split_text_into_chunks(text, delimiter="\n# ", chunk_size=500):
 					temp_chunk = chunk
 					for line in code_cell_lines:
 						# If the next line can be inserted without exceeding the chunk size, do it.
-						if count_words_in_string(temp_chunk.replace("TEMPLATE_CODE_CELL", line, 1)) <= 1500: # chunk_size
+						if count_words_in_string(temp_chunk.replace("TEMPLATE_CODE_CELL", line, 1)) <= 1000: # chunk_size
 							temp_chunk = temp_chunk.replace("TEMPLATE_CODE_CELL", line, 1)
 						# If not, put the remaining lines back into code_cells and stop.
 						else:

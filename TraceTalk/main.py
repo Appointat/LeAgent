@@ -103,7 +103,7 @@ def main(message="", messages=[""]):
 		query_results = chatbot_agent.search_context_qdrant(query, 'Articles', top_k=4)
 
 		# tbot_agent, article.payload["content"] + chatbot_agent.client.retrieve(collection_name="Articles", ids=[article.id]).payload["content"], chatbot_agent.convert_chat_history_to_string(user_only=True), "", query, article.payload["link"], article.score) for article in query_results]
-		article_ids_plus_one = [article.id + 1 for article in query_results]
+		article_ids_plus_one = [min(article.id + 1, 391 - 1) for article in query_results]
 		article_ids_minus_one = [max(article.id - 1, 0) for article in query_results]
 		retrieved_articles_plus_one = chatbot_agent.client.retrieve(collection_name="Articles", ids=article_ids_plus_one)
 		retrieved_articles_minus_one = chatbot_agent.client.retrieve(collection_name="Articles", ids=article_ids_minus_one)

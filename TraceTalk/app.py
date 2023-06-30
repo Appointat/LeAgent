@@ -22,9 +22,10 @@ def handler():
     # return jsonify({'answer': 'Hello World!'})
     try:
         data = request.get_json()
-        print(f"Received data: {data}")
         messages = data.get('messages')  # Get 'message' field from the JSON object
-        print(f"Received message: {messages}")
+        print('Received messages:')
+        for messgae in messages:
+            print(messgae)
 
         messages_str_list = [message.get('content') for message in messages]
         
@@ -40,4 +41,4 @@ def handler():
 
 if __name__ == '__main__':
     print("Starting the server...")
-    app.run(debug=True, host='0.0.0.0', port=5020)
+    app.run(debug=True, host='0.0.0.0', port=5020)  
