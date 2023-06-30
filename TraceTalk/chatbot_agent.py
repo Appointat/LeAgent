@@ -94,7 +94,7 @@ FINAL ANSWER THE QUESTION {{query}}, language used for answers is CONSISTENT wit
         prompt = PromptTemplate(template=template, input_variables=["context", "chat_history", "summaries", "query"], template_format="jinja2", validate_template=False) # Parameter the prompt template
         chain = LLMChain(
             llm=self.llm,
-            prompt=prompt,
+            prompt=prompt, 
             verbose=True,
         )
         return chain
@@ -123,21 +123,20 @@ For exmaple:
     I provide the input text:
 		CHAIN 1:
 			CONTEXT:
-				Machine learning algorithms build a model based on sample data, known as training data, in order to make predictions or decisions without being explicitly programmed to do so.
-			SOURCES:
-				Blabla.
+                Text of chain 1. ABCDEFGHIJKLMNOPQRSTUVWXYZ
 			REFERENCE:
-				https://en.wikipedia.org/wiki/Machine_learning
+				https://link1.com
 		CHAIN 2:
-			TEXT: A convolutional neural network (CNN) is a type of artificial neural network commonly used in deep learning for image recognition and classification.
-			REFERENCE: https://open-academy.github.io/machine-learning/_sources/deep-learning/image-classification.md
+			CONTEXT: 
+                Text of chain 2. ABCDEFGHIJKLMNOPQRSTUVWXYZ
+			REFERENCE:
+                https://link2.com
     Your output should be:
 		COMBINATION:
-			Machine learning is a method of teaching computers to learn patterns in data without being explicitly programmed. It involves building models that can make predictions or decisions based on input data [1].
-			One type of machine learning model commonly used for sequential or time series data is recurrent neural networks (RNNs) [2].
+            Text of combined chain 1 and chain 2. blablabla.
         REFERENCE:
-			[1] https://en.wikipedia.org/wiki/Machine_learning
-			[2] https://open-academy.github.io/machine-learning/_sources/deep-learning/image-classification.md
+			[1] https://link1.com
+			[2] https://link2.com
 =========
 """
             template += """
