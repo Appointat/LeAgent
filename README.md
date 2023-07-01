@@ -71,6 +71,90 @@ An answer from TraceTalk. As we do not provide the UI, so we reform the answer i
 </center>
 
 
+# Installation Guide for _TraceTalk_
+
+This guide will walk you through the steps necessary to install and run the "Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding" application.
+
+## Prerequisites
+
+- Git
+- Python 3.8 or above
+- Node.js v14 or above
+- npm v6.14 or above
+
+## Installation Steps
+
+### 1. Clone the GitHub repository
+
+Clone the repository from GitHub using the following command, remember to include the "--recursive" option to clone the submodules as well:
+
+```
+git clone --recursive https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding.git
+```
+
+### 2. Create a ".env" file
+
+Navigate into the cloned repository and create a new file named ".env". This file will contain your configuration variables. At the moment, you need to fill in the following two:
+
+```
+OPENAI_API_KEY=<Your OpenAI API Key>
+QDRANT_URL=<Qdrant URL>
+QDRANT_API_KEY=<Qdrant API Key>
+```
+
+For `QDRANT_URL` and `QDRANT_API_KEY`, you need to contact the project administrator to obtain them.
+
+### 3. Install and run the backend
+
+Navigate to the `TraceTalk` directory :
+
+```
+cd TraceTalk
+```
+
+Install the required Python packages:
+
+```
+pip install -r requirements.txt
+```
+
+Start the backend service:
+
+```
+python app.py
+```
+
+### 4. Install and run the frontend
+
+Navigate to the `chatbot-ui` directory:
+
+```
+cd chatbot-ui
+```
+
+Install the required Node.js packages:
+
+```
+npm install
+```
+
+Start the frontend service:
+
+```
+npm run dev
+```
+
+### 5. Access the application
+
+Finally, open your web browser and navigate to `http://localhost:3000` .
+
+You should now be able to see and interact with the "Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding" application. Enjoy exploring!
+
+## Troubleshooting
+
+If you run into any issues during the installation process, please feel free to contact the project administrator or raise an issue on the GitHub repository.
+
+
 
 ## Tutorial
 
