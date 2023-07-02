@@ -1,5 +1,4 @@
 import os
-import sys
 from enum import Enum
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
@@ -39,8 +38,6 @@ def main(message="", messages=[""]):
 	if message or messages:
 		use_REST_API = True
 		message = messages.pop(-1)
-	if not message and len(sys.argv) > 1:
-		message = sys.argv[1]
 	messages.append(message)
 
 
