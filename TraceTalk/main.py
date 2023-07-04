@@ -54,9 +54,7 @@ def main(message="", messages=[""]):
 			answer_list = []
 			link_list = []
 			# Query it using content vector.
-			query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string()+"\nuser: "+query, 'Articles', top_k=4)
-			# query_results = chatbot_agent.search_context_qdrant(query, 'Articles', top_kk=4)
-			# requests = [(chatbot_agent, article.payload["content"], chatbot_agent.convert_chat_history_to_string(), "", query, article.payload["link"]) for article in query_results]
+			query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string(user_only=True)+"\nuser: "+query, 'Articles', top_k=4)
 
 			article_ids_plus_one = [article.id + 1 for article in query_results]
 			article_ids_minus_one = [max(article.id - 1, 0) for article in query_results]
@@ -96,10 +94,8 @@ def main(message="", messages=[""]):
 		answer_list = []
 		link_list = []
 		# query it using content vector.
-		# query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string()+"\nuser: "+query, 'Articles', top_k=4)
-		query_results = chatbot_agent.search_context_qdrant(query, 'Articles', top_k=4)
+		query_results = chatbot_agent.search_context_qdrant(chatbot_agent.convert_chat_history_to_string(user_only=True)+"\n[user]: "+query, 'Articles', top_k=4)
 
-		# tbot_agent, article.payload["content"] + chatbot_agent.client.retrieve(collection_name="Articles", ids=[article.id]).payload["content"], chatbot_agent.convert_chat_history_to_string(user_only=True), "", query, article.payload["link"], article.score) for article in query_results]
 		article_ids_plus_one = [min(article.id + 1, 391 - 1) for article in query_results]
 		article_ids_minus_one = [max(article.id - 1, 0) for article in query_results]
 		retrieved_articles_plus_one = chatbot_agent.client.retrieve(collection_name="Articles", ids=article_ids_plus_one)
@@ -112,14 +108,13 @@ def main(message="", messages=[""]):
 				retrieved_articles_minus_one[i].payload["content"] + "\n" +
 				article.payload["content"]
 				+ "\n" + retrieved_articles_plus_one[i].payload["content"],
-				# Convert the chat history to string, including only user's side of the chat (user_only=True).
 				chatbot_agent.convert_chat_history_to_string(user_only=True),
 				"",
 				query,
 				article.payload["link"],
 				article.score
 			) 
-			for i, article in enumerate(query_results)  # Looping over each article in the query results.
+			for i, article in enumerate(query_results)
 		]
 
 		# Use a Pool to manage the processes.
@@ -130,8 +125,6 @@ def main(message="", messages=[""]):
 		answer_list, link_list = zip(*results)
 
 		combine_answer = chatbot_agent.prompt_combine_chain(query=query, answer_list=answer_list, link_list=link_list)
-		# print(f'Answer: {combine_answer}\n')
-		# chatbot_agent.update_chat_history(query, combine_answer)
 
 		return combine_answer
 
