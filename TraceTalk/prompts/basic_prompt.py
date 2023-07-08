@@ -1,7 +1,6 @@
 from langchain.prompts import PromptTemplate
 
 
-
 # Prompt the chatbot.
 def basic_prompt():
     template = """
@@ -22,5 +21,10 @@ QUESTION: {{query}}
 =========
 FINAL ANSWER THE QUESTION {{query}}, language used for answers is CONSISTENT with QUESTION:
 """
-    prompt = PromptTemplate(template=template, input_variables=["context", "chat_history", "summaries", "query"], template_format="jinja2", validate_template=False) # Parameter the prompt template
+    prompt = PromptTemplate(
+        template=template,
+        input_variables=["context", "chat_history", "summaries", "query"],
+        template_format="jinja2",
+        validate_template=False,
+    )  # Parameter the prompt template
     return prompt
