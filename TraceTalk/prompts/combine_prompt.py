@@ -2,7 +2,6 @@ from langchain.prompts import PromptTemplate
 from jinja2 import Template
 
 
-
 # Combine prompt.
 def combine_prompt(chat_history, query, answer_list, link_list):
     n = len(answer_list)
