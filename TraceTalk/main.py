@@ -6,16 +6,6 @@ from handle_multiprocessing import process_request
 from chatbot_agent import ChatbotAgent
 
 
-class Role(Enum):
-    ASSISTANT = "assistant"
-    USER = "user"
-
-
-class Message:
-    def __init__(self, role: Role, content: str):
-        self.role = role
-        self.content = content
-
 
 def main(message="", messages=[""]):
     # Initialize the ChatbotAgent.
