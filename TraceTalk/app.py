@@ -23,10 +23,7 @@ def handler():
     # return jsonify({'answer': 'Hello World!'})
     try:
         data = request.get_json()
-        messages = data.get("messages")  # Get 'message' field from the JSON object
-        print("Received messages:")
-        for messgae in messages:
-            print(messgae)
+        messages = data.get("messages")  # get 'message' field from the JSON object
 
         messages_str_list = [message.get("content") for message in messages]
 
