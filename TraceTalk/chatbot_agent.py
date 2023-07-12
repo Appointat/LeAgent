@@ -25,11 +25,11 @@ from prompts.basic_prompt import basic_prompt
 from prompts.combine_prompt import combine_prompt
 
 
-
 class ChatbotAgent:
     """
     A class used to represent a chatbot agent.
     """
+
     def __init__(
         self,
         openai_api_key: str,
@@ -87,13 +87,13 @@ class ChatbotAgent:
     ):
         """
         Search the Qdrant database for the top k most similar vectors to the query.
-        
+
         Args:
             query (str): The query to search for.
             collection_name (str): The name of the collection to search in.
             vector_name (str): The name of the vector to search for.
             top_k (int): The number of results to return.
-        
+
         Returns:
             query_results (list): A list of the top k most similar vectors to the query.
         """
@@ -204,7 +204,7 @@ class ChatbotAgent:
         Returns:
             chat_string (str): The chat history as a string.
         """
-        if sum([bool(new_query), bool(new_answser)]) == 2:
+        if sum([bool(user_only), bool(chatbot_only)]) == 2:
             raise ValueError(
                 "user_only and chatbot_only cannot be True at the same time."
             )
@@ -216,8 +216,9 @@ class ChatbotAgent:
                     chat_string += f"[{message['role']}]: {message['content'].split('REFERENCE:', 1)[0]} \n"
                 elif message["role"] == "user" and ~chatbot_only:
                     chat_string += f"[{message['role']}]: {message['content']} \n"
-        if new_query and new_answser:
+        if new_query:
             chat_string += f"[user]: {new_query} \n"
+        if new_answser:
             chat_string += f"[chatbot]: {new_answser} \n"
         return chat_string
 
@@ -247,7 +248,7 @@ class ChatbotAgent:
     def markdown_to_python(self, markdown_text):
         """
         Convert Markdown text to Python string.
-        
+
         Args:
             markdown_text (str): The Markdown text to convert.
 
@@ -272,7 +273,7 @@ class ChatbotAgent:
             query_pipeline (str): The user's query.
             choose_GPTModel (bool): If True, choose the GPT model.
             updateChatHistory (bool): If True, update the chat history.
-        
+
         Returns:
             result_pipeline (str): The chatbot's response to the user's query.
         """
@@ -306,9 +307,7 @@ class ChatbotAgent:
             return result_pipeline
 
     # Prompt the chatbot for non libary content.
-    def promtp_engineering_for_non_library_content(
-        self, query
-    ):
+    def promtp_engineering_for_non_library_content(self, query):
         """
         Prompt the chatbot for non libary content.
 
@@ -327,7 +326,6 @@ class ChatbotAgent:
         result_official_keywords = []  # TBD
         result_cheeting = []  # TBD
         return result_prompted
-
 
 
 def get_emmbedings(text):

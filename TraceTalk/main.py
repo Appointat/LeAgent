@@ -6,7 +6,6 @@ from handle_multiprocessing import process_request
 from chatbot_agent import ChatbotAgent
 
 
-
 def main(message="", messages=[""]):
     # Initialize the ChatbotAgent.
     load_dotenv()
@@ -20,14 +19,12 @@ def main(message="", messages=[""]):
     if not qdrant_api_key:
         raise ValueError("QDRANT_API_KEY environment variable not set.")
 
-
     use_REST_API = False
     if message:
         use_REST_API = True
         messages.append(message)
     if messages:
         use_REST_API = True
-
 
     global chatbot_agent
     chatbot_agent = ChatbotAgent(
@@ -54,26 +51,26 @@ def main(message="", messages=[""]):
                 top_k=4,
             )
 
-            article_ids_plus_one = [article.id + 1 for article in query_results]
-            article_ids_minus_one = [
+            articleID_former = [
                 max(article.id - 1, 0) for article in query_results
             ]
-            retrieved_articles_plus_one = chatbot_agent.client.retrieve(
-                collection_name="Articles", ids=article_ids_plus_one
+            articleID_after = [article.id + 1 for article in query_results]
+            retrievedArticles_former = chatbot_agent.client.retrieve(
+                collection_name="Articles", ids=articleID_former
             )
-            retrieved_articles_minus_one = chatbot_agent.client.retrieve(
-                collection_name="Articles", ids=article_ids_minus_one
+            retrievedArticles_after = chatbot_agent.client.retrieve(
+                collection_name="Articles", ids=articleID_after
             )
             requests = [
                 (
                     chatbot_agent,
                     # Concatenate the existing article content with the content retrieved using the article's id.
                     # 'retrieve' function returns a list of points, so we need to access the first (and in this case, only) result with '[0]'.
-                    retrieved_articles_minus_one[i].payload["content"]
+                    retrievedArticles_former[i].payload["content"]
                     + "\n"
                     + article.payload["content"]
                     + "\n"
-                    + retrieved_articles_plus_one[i].payload["content"],
+                    + retrievedArticles_after[i].payload["content"],
                     # Convert the chat history to string, including only user's side of the chat (user_only=True).
                     chatbot_agent.convert_chat_history_to_string(user_only=True),
                     "",
@@ -100,12 +97,12 @@ def main(message="", messages=[""]):
             print(f"Answer: {combine_answer}\n")
             chatbot_agent.update_chat_history(query, combine_answer)
     else:
-        query = message
+        query = messages[-1]
         answer_list = []
         link_list = []
         # query it using content vector.
         query_results = chatbot_agent.search_context_qdrant(
-            chatbot_agent.convert_chat_history_to_string(user_only=True)
+            chatbot_agent.convert_chat_history_to_string(new_query=query, user_only=True)
             + "\n[user]: "
             + query,
             "Articles",
@@ -152,6 +149,7 @@ def main(message="", messages=[""]):
             query=query, answer_list=answer_list, link_list=link_list
         )
 
+        # print(f"-----------combine_answer: {combine_answer}\n")
         return combine_answer
 
 
