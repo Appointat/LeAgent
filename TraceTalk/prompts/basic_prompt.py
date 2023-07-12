@@ -10,10 +10,10 @@ CONTEXT information is below:
 Chat_history:
 {{chat_history}}
 =========
-Given the following extracted parts of a long document and a QUESTION, create a final answer with references ("SOURCES", the refernces do not include links).
+Given the following extracted parts of a long document and a QUESTION, create a final answer with references ("REFERENCE", the refernces do not include links).
 If you don't know the answer, just say that you don't know. Don't try to make up an answer. 
 If the QUESTION is not associate with the CONTEXT, you can say "SORRY" and say that you need more information to answer it, or you can enven refuse to answer it.
-ALWAYS return a "SOURCES" part in your answer.
+ALWAYS return a "REFERENCE" part in your answer.
 
 QUESTION: {{query}}
 =========

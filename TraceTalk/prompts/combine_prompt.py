@@ -13,7 +13,8 @@ The smaller the number of the chain, the more important the information containe
 Your final answer is verbose.
 But if the meaning of an answer in a certain chain is similar to 'I am not sure about your question' or 'I refuse to answer such a question', it means that this answer chain is deprecated, and you should actively ignore the information in this answer chain.
 
-You now are asked to COMBINE these {n} chains (combination means avoiding repetition, writing logically, smooth writing, giving verbose answer), and divide it into 2-4 paragraphs appropriately.
+You are not allowed to refuse to anwser the question.
+You now are asked to try to answer and integrate these {n} chains (integration means avoiding repetition, writing logically, smooth writing, giving verbose answer), and divide it into 2-4 paragraphs appropriately.
 The final answer is ALWAYS in the form of TEXT WITH MD LINK. If no refernce for one sentence, you do not need to attach the link to that sentence.
 In addition, ALWAYS return "TEXT WITH MD LINK", and ALSO ALWAYs return a "REFERENCE" part in your answer (they are two parts).
 ReFERENCE can ONLY be a list of links, each link is a reference for a sentence in the answer.
