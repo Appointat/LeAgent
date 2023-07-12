@@ -71,12 +71,15 @@ class ChatbotAgent:
         self.count = 1  # Count the number of times the chatbot has been called.
         self._max_chat_history_length = 20
         self.chat_history = deque(maxlen=self._max_chat_history_length)
+        init_prompt = "I am TraceTalk, a cutting-edge chatbot designed to encapsulate the power of advanced AI technology, with a special focus on data science, machine learning, and deep learning. (https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding)\n"
+        self.chat_history.append({"role": "chatbot", "content": init_prompt})
         for i in range(len(messages)):
+            tmp_query = ""
+            tmp_answer = ""
             if i % 2 == 0:
-                tmp_query = messages[i]
+                self.chat_history.append({"role": "user", "content": messages[i]})
             else:
-                tmp_answer = messages[i]
-                self.update_chat_history(query=tmp_query, answer=tmp_answer)
+                self.chat_history.append({"role": "chatbot", "content": messages[i]})
 
         self.query = ""
         self.answer = ""
@@ -143,7 +146,11 @@ class ChatbotAgent:
             return "I'm sorry, there is not enough information to provide a meaningful answer to your question. Can you please provide more context or a specific question?"
         else:
             chat_history = self.convert_chat_history_to_string()
-
+            print(f"--------chat history: {chat_history}")
+            length_of_chat_history = len(re.findall(r"\b\w+\b", chat_history))
+            print(f"--------length of chat history: {length_of_chat_history}")
+            if length_of_chat_history/3*4 >= 3000: # Max token length for GPT-3 is 4096.
+                chat_history = self.convert_chat_history_to_string(user_only=True)
             prompt = combine_prompt(
                 chat_history=chat_history,
                 query=query,
@@ -177,12 +184,6 @@ class ChatbotAgent:
         """
         if len(self.chat_history) == self._max_chat_history_length:
             self.chat_history.popleft()
-        self.chat_history.append(
-            {
-                "role": "system",
-                "content": f"The session id of conversation is {self.count}.",
-            }
-        )
 
         self.chat_history.append({"role": "user", "content": query})
         self.chat_history.append({"role": "chatbot", "content": answer})
@@ -208,7 +209,7 @@ class ChatbotAgent:
             raise ValueError(
                 "user_only and chatbot_only cannot be True at the same time."
             )
-        chat_string = "[chatbot]: I am TraceTalk, a cutting-edge chatbot designed to encapsulate the power of advanced AI technology, with a special focus on data science, machine learning, and deep learning. (https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding)\n"
+        chat_string = ""
         if len(self.chat_history) > 0:
             for message in self.chat_history:
                 if message["role"] == "chatbot" and ~user_only:
@@ -220,6 +221,10 @@ class ChatbotAgent:
             chat_string += f"[user]: {new_query} \n"
         if new_answser:
             chat_string += f"[chatbot]: {new_answser} \n"
+
+        length_of_chat_history = len(re.findall(r"\b\w+\b", chat_string))
+        if length_of_chat_history/3*4 >= 3000: # Max token length for GPT-3 is 4096.
+                print(f"Chat history is too long: {length_of_chat_history/3*4} tokens. Truncating chat history.")
         return chat_string
 
     def convert_links_in_text(self, text):

@@ -102,9 +102,7 @@ def main(message="", messages=[""]):
         link_list = []
         # query it using content vector.
         query_results = chatbot_agent.search_context_qdrant(
-            chatbot_agent.convert_chat_history_to_string(new_query=query, user_only=True)
-            + "\n[user]: "
-            + query,
+            chatbot_agent.convert_chat_history_to_string(new_query=query, user_only=True),
             "Articles",
             top_k=4,
         )

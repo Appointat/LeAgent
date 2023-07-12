@@ -26,7 +26,6 @@ def handler():
         messages = data.get("messages")  # get 'message' field from the JSON object
 
         messages_str_list = [message.get("content") for message in messages]
-
         # send the message to OpenAI API
         answer = agent(messages=messages_str_list)
 
