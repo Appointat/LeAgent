@@ -20,6 +20,7 @@ On a side note, if you are worried about something like ChatGPT providing incorr
 
 Stepping into the future of conversational AI, we are thrilled to introduce TraceTalk, a cutting-edge solution that blends state-of-the-art artificial intelligence with interactive learning. By reshaping the traditional approach to knowledge acquisition, we are making learning as dynamic, engaging, and personable as conversing with a close friend. 🚀
 
+**Roadmap of TraceTalk**:
 ![Roadmap of TraceTalk](https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/44a848be-17ef-4877-a1c7-29a0c6de3c51)
 
 ## The Novelty of TraceTalk 📚
