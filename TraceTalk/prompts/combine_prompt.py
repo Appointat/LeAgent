@@ -1,3 +1,4 @@
+import re
 from langchain.prompts import PromptTemplate
 from jinja2 import Template
 
@@ -39,21 +40,40 @@ REFERENCE:
     [2] https://link2.com
 =========
 """
-    template += """
+    
+    chat_history_text ="""
 QUESTION: {{query}}
 Chat_history: 
-{{chat_history}}[user]: {{query}}
+{{chat_history}}
 
 =========
 """
+    template += chat_history_text
+
+    template_tmp = ""
     for i in range(n):
-        template += f"""
+        template_tmp += f"""
 ### CHAIN {i+1}:
 CONTEXT:
 {answer_list[i]}
 REFERENCE:
 {link_list[i]}
 """
+        length_prompt = len(re.findall(r"\b\w+\b", template + template_tmp))
+        if length_prompt/3*4 > 3000:
+            break
+        template += template_tmp
+    # After breaking from the loop, print the remaining links.
+    template_tmp = ""
+    for j in range(i, n):
+        template_tmp += f"""
+{link_list[j]}
+"""
+        length_prompt = len(re.findall(r"\b\w+\b", template + template_tmp))
+        if length_prompt/3*4 > 3000:
+            break
+        template += template_tmp
+
     template += """
 =========
 ANSWER THE QUESTION {{query}}, FINAL A VERBOSE ANSWER, language used for answers is CONSISTENT with QUESTION:
