@@ -146,10 +146,9 @@ class ChatbotAgent:
             return "I'm sorry, there is not enough information to provide a meaningful answer to your question. Can you please provide more context or a specific question?"
         else:
             chat_history = self.convert_chat_history_to_string()
-            print(f"--------chat history: {chat_history}")
             length_of_chat_history = len(re.findall(r"\b\w+\b", chat_history))
-            print(f"--------length of chat history: {length_of_chat_history}")
-            if length_of_chat_history/3*4 >= 3000: # Max token length for GPT-3 is 4096.
+            if length_of_chat_history/3*4 >= 2000: # Max token length for GPT-3 is 4096.
+                print(f"Eorr: chat history is too long, tokens: {length_of_chat_history/3*4}.")
                 chat_history = self.convert_chat_history_to_string(user_only=True)
             prompt = combine_prompt(
                 chat_history=chat_history,

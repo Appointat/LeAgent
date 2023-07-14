@@ -147,7 +147,6 @@ def main(message="", messages=[""]):
             query=query, answer_list=answer_list, link_list=link_list
         )
 
-        # print(f"-----------combine_answer: {combine_answer}\n")
         return combine_answer
 
 
