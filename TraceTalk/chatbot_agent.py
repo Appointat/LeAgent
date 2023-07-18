@@ -17,9 +17,6 @@ from langchain.callbacks.streaming_stdout_final_only import (
 # Import Qdrant client (vector database).
 from qdrant_client import QdrantClient
 
-# Import embeddings function.
-from prep_data import get_emmbedings
-
 # Importing prompts.
 from prompts.basic_prompt import basic_prompt
 from prompts.combine_prompt import combine_prompt
@@ -74,8 +71,6 @@ class ChatbotAgent:
         init_prompt = "I am TraceTalk, a cutting-edge chatbot designed to encapsulate the power of advanced AI technology, with a special focus on data science, machine learning, and deep learning. (https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding)\n"
         self.chat_history.append({"role": "chatbot", "content": init_prompt})
         for i in range(len(messages)):
-            tmp_query = ""
-            tmp_answer = ""
             if i % 2 == 0:
                 self.chat_history.append({"role": "user", "content": messages[i]})
             else:
@@ -150,6 +145,7 @@ class ChatbotAgent:
             if length_of_chat_history/3*4 >= 2000: # Max token length for GPT-3 is 4096.
                 print(f"Eorr: chat history is too long, tokens: {length_of_chat_history/3*4}.")
                 chat_history = self.convert_chat_history_to_string(user_only=True)
+
             prompt = combine_prompt(
                 chat_history=chat_history,
                 query=query,
@@ -162,6 +158,7 @@ class ChatbotAgent:
             #     verbose=True,
             # )
             # combine_answer = self.llm_streaming(prompt)
+            # combine_answer = self.llm_dot3(prompt)
             # combine_answer = self.convert_links_in_text(combine_answer)
             if prompt.count("sorry") >= 2:
                 combine_answer = ""
