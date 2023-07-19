@@ -58,7 +58,7 @@ def prep_book_data(
                 print(f"Processing {md_title}: {link}...")
 
                 md_content_split = split_text_into_chunks(
-                    md_content, chunk_size=500
+                    md_content, chunk_size=250
                 )  # Split the text into chunks.
                 for text in md_content_split:
                     if not text:
