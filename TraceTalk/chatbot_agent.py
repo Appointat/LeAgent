@@ -4,6 +4,7 @@ import re
 from typing import List
 from collections import deque
 from dotenv import load_dotenv
+from src import get_emmbedings
 
 # Import OpenAI API and Langchain libraries.
 import openai
@@ -124,7 +125,7 @@ class ChatbotAgent:
         return chain
 
     # Combine prompt.
-    def prompt_combine_chain(self, query, answer_list, link_list):
+    def prompt_combine_chain(self, query, answer_list, link_list_list):
         """
         Prompt the chatbot to generate a response.
 
@@ -150,7 +151,7 @@ class ChatbotAgent:
                 chat_history=chat_history,
                 query=query,
                 answer_list=answer_list,
-                link_list=link_list,
+                link_list_list=link_list_list,
             )
             # chain = LLMChain(
             #     llm=self.llm_streaming,
@@ -327,23 +328,3 @@ class ChatbotAgent:
         result_official_keywords = []  # TBD
         result_cheeting = []  # TBD
         return result_prompted
-
-
-def get_emmbedings(text):
-    """
-    Get the embeddings of the text.
-
-    Args:
-        text (str): The text to get the embeddings of.
-
-    Returns:
-        embedded_query (list): The embeddings of the text.
-    """
-    load_dotenv()
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    embedded_query = openai.Embedding.create(
-        input=text,
-        model="text-embedding-ada-002",
-    )["data"][0]["embedding"]
-
-    return embedded_query  # It is a vector of numbers.
