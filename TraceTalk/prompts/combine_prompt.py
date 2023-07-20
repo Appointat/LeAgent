@@ -1,74 +1,73 @@
 import re
 from langchain.prompts import PromptTemplate
 from jinja2 import Template
+from src import get_tokens_number
 
 
 # Combine prompt.
-def combine_prompt(chat_history, query, answer_list, link_list):
+def combine_prompt(chat_history, query, answer_list, link_list_list):
     n = len(answer_list)
 
     template = f"""
 Now I will provide you with {n} chains, here is the definition of chain: each chain contains an answer and a link. The answers in the chain are the results from the links.
-In theory, each chain should produce a paragraph with links as references. It means that you MUST tell me from which references you make the summery.
+In theory, each chain should produce a paragraph with links as the resources. It means that you MUST tell me from which references you make the summery.
 The smaller the number of the chain, the more important the information contained in the chain.
 Your final answer is verbose.
 But if the meaning of an answer in a certain chain is similar to 'I am not sure about your question' or 'I refuse to answer such a question', it means that this answer chain is deprecated, and you should actively ignore the information in this answer chain.
 
-You are not allowed to refuse to anwser the question.
-You now are asked to try to answer and integrate these {n} chains (integration means avoiding repetition, writing logically, smooth writing, giving verbose answer), and divide it into 2-4 paragraphs appropriately.
-The final answer is ALWAYS in the form of TEXT WITH MD LINK. If no refernce for one sentence, you do not need to attach the link to that sentence.
-In addition, ALWAYS return "TEXT WITH MD LINK", and ALSO ALWAYs return a "REFERENCE" part in your answer (they are two parts).
-ReFERENCE can ONLY be a list of links, each link is a reference for a sentence in the answer.
+You now are asked to try to answer and integrate these {n} chains (integration means avoiding repetition, writing logically, smooth writing, giving verbose answer), and answer it in 2-4 paragraphs appropriately.
+The final answer is ALWAYS in Markdown format.
+In addition, in order to demostrate the knowledge resources you have referred, please ALWAYs return a "RESURCE" part in your answer. 
+RESOURCE can ONLY be a list of links, and each link means the knowledge resource of each chain. Each chain has only one RESOURCE part.
 
-For exmaple:
-I provide the input text:
+For exmaple, if you are provided with 2 chains, the template is below:
 CHAIN 1:
     CONTEXT:
         Text of chain 1. ABCDEFGHIJKLMNOPQRSTUVWXYZ
-    REFERENCE:
+    RESOURCE:
         https://link1.com
 CHAIN 2:
     CONTEXT: 
         Text of chain 2. ABCDEFGHIJKLMNOPQRSTUVWXYZ
-    REFERENCE:
+    RESOURCE:
         https://link2.com
-Your output should be:
+Then, your answer should be in Markdown format:
 COMBINATION:
-    Text of combined chain 1 and chain 2. blablabla.
+    Integrated text of chain 1 [1] and chain 2 [2]. Blablabla.
 REFERENCE:
-    [1] https://link1.com
-    [2] https://link2.com
+    [number] [title_link1](https://link1.com)
+    [number] [title_link2](https://link2.com)
+
 =========
 """
     
     chat_history_text ="""
-QUESTION: {{query}}
-Chat_history: 
+### Chat history: 
 {{chat_history}}
 
 =========
 """
     template += chat_history_text
 
-    template_tmp = ""
+    init_chain_tmp = f"Now I provide you with {n} chains:"
+    template += init_chain_tmp
     for i in range(n):
-        template_tmp += f"""
+        link_list = '\n'.join([item for item in link_list_list[i]])
+        template_tmp = f"""
 ### CHAIN {i+1}:
 CONTEXT:
 {answer_list[i]}
-REFERENCE:
-{link_list[i]}
+RESOURCE:
+{link_list}
 """
         length_prompt = len(re.findall(r"\b\w+\b", template + template_tmp))
-        if length_prompt/3*4 > 3000:
+        if get_tokens_number(template + template_tmp) > 3800:
             break
         template += template_tmp
     # After breaking from the loop, print the remaining links.
-    template_tmp = ""
-    for j in range(i, n):
-        template_tmp += f"""
-{link_list[j]}
-"""
+    for j in range(i + 1, n):
+        link_list = '\n'.join([item for item in link_list_list[j]])
+        template_tmp = f"{link_list}\n"
         length_prompt = len(re.findall(r"\b\w+\b", template + template_tmp))
         if length_prompt/3*4 > 3000:
             break
@@ -76,7 +75,7 @@ REFERENCE:
 
     template += """
 =========
-ANSWER THE QUESTION {{query}}, FINAL A VERBOSE ANSWER, language used for answers is CONSISTENT with QUESTION:
+ANSWER THE QUESTION "{{query}}", FINAL A VERBOSE ANSWER, language used for answers is CONSISTENT with QUESTION:
 """
 
     # prompt = PromptTemplate(template=template, input_variables=["query", "chat_history"], template_format="jinja2", validate_template=False) # Parameter the prompt template
