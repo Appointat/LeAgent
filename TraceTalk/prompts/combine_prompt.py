@@ -68,8 +68,7 @@ RESOURCE:
     for j in range(i + 1, n):
         link_list = '\n'.join([item for item in link_list_list[j]])
         template_tmp = f"{link_list}\n"
-        length_prompt = len(re.findall(r"\b\w+\b", template + template_tmp))
-        if length_prompt/3*4 > 3000:
+        if get_tokens_number(template + template_tmp) > 3800:
             break
         template += template_tmp
 
