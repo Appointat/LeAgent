@@ -4,6 +4,7 @@ import re
 from typing import List
 from collections import deque
 from dotenv import load_dotenv
+from src import get_emmbedings, get_tokens_number
 
 # Import OpenAI API and Langchain libraries.
 import openai
@@ -124,7 +125,7 @@ class ChatbotAgent:
         return chain
 
     # Combine prompt.
-    def prompt_combine_chain(self, query, answer_list, link_list):
+    def prompt_combine_chain(self, query, answer_list, link_list_list):
         """
         Prompt the chatbot to generate a response.
 
@@ -141,16 +142,15 @@ class ChatbotAgent:
             return "I'm sorry, there is not enough information to provide a meaningful answer to your question. Can you please provide more context or a specific question?"
         else:
             chat_history = self.convert_chat_history_to_string()
-            length_of_chat_history = len(re.findall(r"\b\w+\b", chat_history))
-            if length_of_chat_history/3*4 >= 2000: # Max token length for GPT-3 is 4096.
-                print(f"Eorr: chat history is too long, tokens: {length_of_chat_history/3*4}.")
+            if get_tokens_number(chat_history) >= 2000: # Max token length for GPT-3 is 4096.
+                print(f"Eorr: chat history is too long, tokens: {get_tokens_number(chat_history)}.")
                 chat_history = self.convert_chat_history_to_string(user_only=True)
 
             prompt = combine_prompt(
                 chat_history=chat_history,
                 query=query,
                 answer_list=answer_list,
-                link_list=link_list,
+                link_list_list=link_list_list,
             )
             # chain = LLMChain(
             #     llm=self.llm_streaming,
@@ -218,9 +218,8 @@ class ChatbotAgent:
         if new_answser:
             chat_string += f"[chatbot]: {new_answser} \n"
 
-        length_of_chat_history = len(re.findall(r"\b\w+\b", chat_string))
-        if length_of_chat_history/3*4 >= 3000: # Max token length for GPT-3 is 4096.
-                print(f"Chat history is too long: {length_of_chat_history/3*4} tokens. Truncating chat history.")
+        if get_tokens_number(chat_string) >= 3000: # Max token length for GPT-3 is 4096.
+                print(f"Chat history is too long: {get_tokens_number(chat_string)} tokens. Truncating chat history.")
         return chat_string
 
     def convert_links_in_text(self, text):
@@ -327,23 +326,3 @@ class ChatbotAgent:
         result_official_keywords = []  # TBD
         result_cheeting = []  # TBD
         return result_prompted
-
-
-def get_emmbedings(text):
-    """
-    Get the embeddings of the text.
-
-    Args:
-        text (str): The text to get the embeddings of.
-
-    Returns:
-        embedded_query (list): The embeddings of the text.
-    """
-    load_dotenv()
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    embedded_query = openai.Embedding.create(
-        input=text,
-        model="text-embedding-ada-002",
-    )["data"][0]["embedding"]
-
-    return embedded_query  # It is a vector of numbers.

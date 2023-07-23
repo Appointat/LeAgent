@@ -1,5 +1,4 @@
 import os
-from enum import Enum
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 from handle_multiprocessing import process_request
@@ -51,9 +50,7 @@ def main(message="", messages=[""]):
                 top_k=4,
             )
 
-            articleID_former = [
-                max(article.id - 1, 0) for article in query_results
-            ]
+            articleID_former = [max(article.id - 1, 0) for article in query_results]
             articleID_after = [article.id + 1 for article in query_results]
             retrievedArticles_former = chatbot_agent.client.retrieve(
                 collection_name="Articles", ids=articleID_former
@@ -87,11 +84,15 @@ def main(message="", messages=[""]):
             with ThreadPoolExecutor(max_workers=len(query_results)) as executor:
                 results = list(executor.map(process_request, requests))
 
-            # Results is a list of tuples of the form (answer, link).
-            answer_list, link_list = zip(*results)
+            # Initialize link_list_list with each link from link_list as a separate list.
+            link_list_list = [[link] for link in link_list]
+            # For each answer, perform the query and add the result to the corresponding list in link_list_list.
+            for i, answer in enumerate(answer_list):
+                secondary_query_results_temp = chatbot_agent.search_context_qdrant(answer, "Articles", top_k=2)
+                link_list_list[i].extend(article.payload["link"].replace("_sources", "").replace(".md", ".html") for article in secondary_query_results_temp)
 
             combine_answer = chatbot_agent.prompt_combine_chain(
-                query=query, answer_list=answer_list, link_list=link_list
+                query=query, answer_list=answer_list, link_list_list=link_list_list
             )
             print(f"Query : {query}\n")
             print(f"Answer: {combine_answer}\n")
@@ -102,13 +103,15 @@ def main(message="", messages=[""]):
         link_list = []
         # query it using content vector.
         query_results = chatbot_agent.search_context_qdrant(
-            chatbot_agent.convert_chat_history_to_string(new_query=query, user_only=True),
+            chatbot_agent.convert_chat_history_to_string(
+                new_query=query, user_only=True
+            ),
             "Articles",
             top_k=4,
         )
 
         article_ids_plus_one = [
-            min(article.id + 1, 391 - 1) for article in query_results
+            min(article.id + 1, 703 - 1) for article in query_results
         ]
         article_ids_minus_one = [max(article.id - 1, 0) for article in query_results]
         retrieved_articles_plus_one = chatbot_agent.client.retrieve(
@@ -128,7 +131,6 @@ def main(message="", messages=[""]):
                 + "\n"
                 + retrieved_articles_plus_one[i].payload["content"],
                 chatbot_agent.convert_chat_history_to_string(user_only=True),
-                "",
                 query,
                 article.payload["link"],
                 article.score,
@@ -143,8 +145,16 @@ def main(message="", messages=[""]):
         # Results is a list of tuples of the form (answer, link).
         answer_list, link_list = zip(*results)
 
+        # Initialize link_list_list with each link from link_list as a separate list.
+        link_list_list = [[link] for link in link_list]
+        # For each answer, perform the query and add the result to the corresponding list in link_list_list.
+        for i, answer in enumerate(answer_list):
+            secondary_query_results_temp = chatbot_agent.search_context_qdrant(answer, "Articles", top_k=2)
+            link_list_list[i].extend(article.payload["link"].replace("_sources", "").replace(".md", ".html") for article in secondary_query_results_temp)
+
+
         combine_answer = chatbot_agent.prompt_combine_chain(
-            query=query, answer_list=answer_list, link_list=link_list
+            query=query, answer_list=answer_list, link_list_list=link_list_list
         )
 
         return combine_answer

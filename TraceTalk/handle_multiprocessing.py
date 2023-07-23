@@ -9,11 +9,11 @@ def process_request(params):
     Returns:
         tuple: A tuple of the answer and the link.
     """
-    chatbot_agent, context, chat_history, summaries, query, link, score = params
+    chatbot_agent, context, chat_history, query, link, score = params
     convert_link = (
         link.replace("_sources", "").replace(".md", ".html") if score > 0.5 else ""
     )
-    reject_context = "sorry, the question is not associate with the context. The chatbot should refuse to answer."
+    reject_context = "Sorry, the question is not associate with the context. The chatbot should refuse to answer."
 
     try:
         chain = chatbot_agent.prompt_chatbot()
@@ -21,7 +21,6 @@ def process_request(params):
             chain.predict(
                 context=context,
                 chat_history=chat_history,
-                summaries=summaries,
                 query=query,
             )
             if score > 0.5
