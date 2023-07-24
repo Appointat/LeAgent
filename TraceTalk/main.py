@@ -88,8 +88,15 @@ def main(message="", messages=[""]):
             link_list_list = [[link] for link in link_list]
             # For each answer, perform the query and add the result to the corresponding list in link_list_list.
             for i, answer in enumerate(answer_list):
-                secondary_query_results_temp = chatbot_agent.search_context_qdrant(answer, "Articles", top_k=2)
-                link_list_list[i].extend(article.payload["link"].replace("_sources", "").replace(".md", ".html") for article in secondary_query_results_temp)
+                secondary_query_results_temp = chatbot_agent.search_context_qdrant(
+                    answer, "Articles", top_k=2
+                )
+                link_list_list[i].extend(
+                    article.payload["link"]
+                    .replace("_sources", "")
+                    .replace(".md", ".html")
+                    for article in secondary_query_results_temp
+                )
 
             combine_answer = chatbot_agent.prompt_combine_chain(
                 query=query, answer_list=answer_list, link_list_list=link_list_list
@@ -149,9 +156,13 @@ def main(message="", messages=[""]):
         link_list_list = [[link] for link in link_list]
         # For each answer, perform the query and add the result to the corresponding list in link_list_list.
         for i, answer in enumerate(answer_list):
-            secondary_query_results_temp = chatbot_agent.search_context_qdrant(answer, "Articles", top_k=2)
-            link_list_list[i].extend(article.payload["link"].replace("_sources", "").replace(".md", ".html") for article in secondary_query_results_temp)
-
+            secondary_query_results_temp = chatbot_agent.search_context_qdrant(
+                answer, "Articles", top_k=2
+            )
+            link_list_list[i].extend(
+                article.payload["link"].replace("_sources", "").replace(".md", ".html")
+                for article in secondary_query_results_temp
+            )
 
         combine_answer = chatbot_agent.prompt_combine_chain(
             query=query, answer_list=answer_list, link_list_list=link_list_list

@@ -142,8 +142,12 @@ class ChatbotAgent:
             return "I'm sorry, there is not enough information to provide a meaningful answer to your question. Can you please provide more context or a specific question?"
         else:
             chat_history = self.convert_chat_history_to_string()
-            if get_tokens_number(chat_history) >= 2000: # Max token length for GPT-3 is 4096.
-                print(f"Eorr: chat history is too long, tokens: {get_tokens_number(chat_history)}.")
+            if (
+                get_tokens_number(chat_history) >= 2000
+            ):  # Max token length for GPT-3 is 4096.
+                print(
+                    f"Eorr: chat history is too long, tokens: {get_tokens_number(chat_history)}."
+                )
                 chat_history = self.convert_chat_history_to_string(user_only=True)
 
             prompt = combine_prompt(
@@ -218,8 +222,12 @@ class ChatbotAgent:
         if new_answser:
             chat_string += f"[chatbot]: {new_answser} \n"
 
-        if get_tokens_number(chat_string) >= 3000: # Max token length for GPT-3 is 4096.
-                print(f"Chat history is too long: {get_tokens_number(chat_string)} tokens. Truncating chat history.")
+        if (
+            get_tokens_number(chat_string) >= 3000
+        ):  # Max token length for GPT-3 is 4096.
+            print(
+                f"Chat history is too long: {get_tokens_number(chat_string)} tokens. Truncating chat history."
+            )
         return chat_string
 
     def convert_links_in_text(self, text):
