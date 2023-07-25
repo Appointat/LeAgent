@@ -9,6 +9,7 @@ def combine_prompt(chat_history, query, answer_list, link_list_list):
     n = len(answer_list)
 
     template = f"""
+===== RULES =====
 Now I will provide you with {n} chains, here is the definition of chain: each chain contains an answer and a link. The answers in the chain are the results from the links.
 In theory, each chain should produce a paragraph with links as the resources. It means that you MUST tell me from which references you make the summery.
 The smaller the number of the chain, the more important the information contained in the chain.
@@ -17,9 +18,11 @@ But if the meaning of an answer in a certain chain is similar to 'I am not sure 
 
 You now are asked to try to answer and integrate these {n} chains (integration means avoiding repetition, writing logically, smooth writing, giving verbose answer), and answer it in 2-4 paragraphs appropriately.
 The final answer is ALWAYS in Markdown format.
+Provide your answer in a style of CITATION format where you also list the resources from where you found the information at the end of the text. (an example is provided below)
 In addition, in order to demostrate the knowledge resources you have referred, please ALWAYs return a "RESURCE" part in your answer. 
 RESOURCE can ONLY be a list of links, and each link means the knowledge resource of each chain. Each chain has only one RESOURCE part.
 
+===== EXAMPLE =====
 For exmaple, if you are provided with 2 chains, the template is below:
 CHAIN 1:
     CONTEXT:
@@ -31,21 +34,19 @@ CHAIN 2:
         Text of chain 2. ABCDEFGHIJKLMNOPQRSTUVWXYZ
     RESOURCE:
         https://link2.com
-Then, your answer should be in Markdown format:
-COMBINATION:
+
+YOU COMPLETE ANSWER LIKE THIS:
     Integrated text of chain 1 [1] and chain 2 [2]. Blablabla.
 REFERENCE:
-    [number] [title_link1](https://link1.com)
-    [number] [title_link2](https://link2.com)
+    [1] [title_link1](https://link1.com)
+    [2] [title_link2](https://link2.com)
 
-=========
 """
     
     chat_history_text ="""
-### Chat history: 
+===== CHAT HISTORY =====
 {{chat_history}}
 
-=========
 """
     template += chat_history_text
 
@@ -54,7 +55,7 @@ REFERENCE:
     for i in range(n):
         link_list = '\n'.join([item for item in link_list_list[i]])
         template_tmp = f"""
-### CHAIN {i+1}:
+===== CHAIN {i+1} =====
 CONTEXT:
 {answer_list[i]}
 RESOURCE:
