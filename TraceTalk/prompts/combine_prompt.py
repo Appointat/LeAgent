@@ -30,7 +30,7 @@ CHAIN 1:
     RESOURCE:
         https://link1.com
 CHAIN 2:
-    CONTEXT: 
+    CONTEXT:
         Text of chain 2. ABCDEFGHIJKLMNOPQRSTUVWXYZ
     RESOURCE:
         https://link2.com
