@@ -5,7 +5,7 @@ from src import get_tokens_number
 
 
 # Combine prompt.
-def combine_prompt(chat_history, query, answer_list, link_list_list):
+def combine_prompt(chat_history, query, answer_list, link_list_list, MAX_TOKENS=3000):
     n = len(answer_list)
 
     template = f"""
@@ -19,8 +19,10 @@ But if the meaning of an answer in a certain chain is similar to 'I am not sure 
 You now are asked to try to answer and integrate these {n} chains (integration means avoiding repetition, writing logically, smooth writing, giving verbose answer), and answer it in 2-4 paragraphs appropriately.
 The final answer is ALWAYS in Markdown format.
 Provide your answer in a style of CITATION format where you also list the resources from where you found the information at the end of the text. (an example is provided below)
-In addition, in order to demostrate the knowledge resources you have referred, please ALWAYs return a "RESURCE" part in your answer. 
+In addition, in order to demostrate the knowledge resources you have referred, please ALWAYs return a "RESOURCE" part in your answer. 
 RESOURCE can ONLY be a list of links, and each link means the knowledge resource of each chain. Each chain has only one RESOURCE part.
+The RESOURCE should ONLY consist of LINKS that are directly drawn from the CHAINE.
+Strictly PROHIBITED to create or fabricate the links within RESOURCE, if no links are found please say sorry. 
 
 ===== EXAMPLE =====
 For exmaple, if you are provided with 2 chains, the template is below:
@@ -42,8 +44,8 @@ REFERENCE:
     [2] [title_link2](https://link2.com)
 
 """
-    
-    chat_history_text ="""
+
+    chat_history_text = """
 ===== CHAT HISTORY =====
 {{chat_history}}
 
@@ -53,7 +55,7 @@ REFERENCE:
     init_chain_tmp = f"Now I provide you with {n} chains:"
     template += init_chain_tmp
     for i in range(n):
-        link_list = '\n'.join([item for item in link_list_list[i]])
+        link_list = "\n".join([item for item in link_list_list[i]])
         template_tmp = f"""
 ===== CHAIN {i+1} =====
 CONTEXT:
@@ -61,15 +63,14 @@ CONTEXT:
 RESOURCE:
 {link_list}
 """
-        length_prompt = len(re.findall(r"\b\w+\b", template + template_tmp))
-        if get_tokens_number(template + template_tmp) > 3800:
+        if get_tokens_number(template + template_tmp) > MAX_TOKENS:
             break
         template += template_tmp
     # After breaking from the loop, print the remaining links.
     for j in range(i + 1, n):
-        link_list = '\n'.join([item for item in link_list_list[j]])
+        link_list = "\n".join([item for item in link_list_list[j]])
         template_tmp = f"{link_list}\n"
-        if get_tokens_number(template + template_tmp) > 3800:
+        if get_tokens_number(template + template_tmp) > MAX_TOKENS:
             break
         template += template_tmp
 
