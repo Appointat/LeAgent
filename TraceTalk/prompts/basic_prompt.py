@@ -4,24 +4,26 @@ from langchain.prompts import PromptTemplate
 # Prompt the chatbot.
 def basic_prompt():
     template = """
-Given the following CONTEXT part of a long document and a QUESTION, create an answer with RESOURCE.
-If you don't know the answer, just say that you don't know. Don't try to make up an answer. 
-If the QUESTION is not associated with the CONTEXT, you can say "SORRY" and say that you need more information to answer it, or you can enven refuse to answer it.
-ALWAYS return a "RESOURCE" part in your answer. RESOURCE can ONLY be a list of LINK, and is located in the end of your answer.
+In your answer you should add a part called RESOURCE to extract the corresponding links from CONTEXT and list them in RESOURCE in markdown and citation format.
+Strictly PROHIBITED to create or fabricate the links within RESOURCE, if no links are found please say sorry. The RESOURCE should ONLY consist of LINKS that are directly drawn from the CONTEXT.
+If the answer to the QUESTION is not within your knowledge scope, admit it instead of concocting an answer. 
+In the event where the QUESTION doesn't correlate with the CONTEXT, it's acceptable to respond with an apology, indicating that more information is required for an accurate answer, or you may respectfully decline to provide an answer.
 
-=========
-CONTEXT
+===== CONTEXT =====
 {{context}}
 
-=========
-Chat_history:
+===== CHAT HISTORY =====
 {{chat_history}}
+
+===== RESOURCE =====
+{{resource}}
+
 =========
-FINAL ANSWER THE QUESTION "{{query}}", answer language is CONSISTENT with QUESTION:
+ANSWER THE QUESTION "{{query}}", FINAL A VERBOSE ANSWER, language used for answers is CONSISTENT with QUESTION:
 """
     prompt = PromptTemplate(
         template=template,
-        input_variables=["context", "chat_history", "query"],
+        input_variables=["context", "chat_history", "resource","query"],
         template_format="jinja2",
         validate_template=False,
     )  # Parameter the prompt template
