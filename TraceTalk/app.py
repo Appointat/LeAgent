@@ -1,6 +1,7 @@
 import sys
 import os
 import codecs
+from src import get_tokens_number
 
 core_directory = os.path.dirname(os.path.abspath(__file__))
 if core_directory not in sys.path:
@@ -21,18 +22,18 @@ sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
 def handler():
     print("Received request...")
     # return jsonify({'answer': 'Hello World!'})
-    try:
-        data = request.get_json()
-        messages = data.get("messages")  # get 'message' field from the JSON object
+    # try:
+    data = request.get_json()
+    messages = data.get("messages")  # get 'message' field from the JSON object
 
-        messages_str_list = [message.get("content") for message in messages]
-        # send the message to OpenAI API
-        answer = agent(messages=messages_str_list)
+    messages_str_list = [message["content"] for message in messages]
+    # send the message to OpenAI API
+    answer = agent(messages=messages_str_list)
 
-        return jsonify({"answer": answer})
-    except Exception as e:
-        print(f"Error occurred: {e}")
-        return jsonify({"error": str(e)})
+    return jsonify({"answer": answer})
+    # except Exception as e:
+    #     print(f"Error occurred: {e}")
+    #     return jsonify({"error": str(e)})
 
 
 if __name__ == "__main__":
