@@ -18,12 +18,8 @@ def main(message="", messages=[""]):
     if not qdrant_api_key:
         raise ValueError("QDRANT_API_KEY environment variable not set.")
 
-    use_REST_API = False
     if message:
-        use_REST_API = True
         messages.append(message)
-    if messages:
-        use_REST_API = True
 
     global chatbot_agent
     chatbot_agent = ChatbotAgent(
@@ -39,16 +35,12 @@ def main(message="", messages=[""]):
     link_list = []
     # query it using content vector.
     query_results = chatbot_agent.search_context_qdrant(
-        chatbot_agent.convert_chat_history_to_string(
-            new_query=query, user_only=True
-        ),
+        chatbot_agent.convert_chat_history_to_string(new_query=query, user_only=True),
         "Articles",
         top_k=4,
     )
 
-    article_ids_plus_one = [
-        min(article.id + 1, 703 - 1) for article in query_results
-    ]
+    article_ids_plus_one = [min(article.id + 1, 945 - 1) for article in query_results]
     article_ids_minus_one = [max(article.id - 1, 0) for article in query_results]
     retrieved_articles_plus_one = chatbot_agent.client.retrieve(
         collection_name="Articles", ids=article_ids_plus_one
@@ -61,12 +53,12 @@ def main(message="", messages=[""]):
             chatbot_agent,
             # Concatenate the existing article content with the content retrieved using the article's id.
             # 'retrieve' function returns a list of points, so we need to access the first (and in this case, only) result with '[0]'.
-            retrieved_articles_minus_one[i].payload["content"]
-            + "\n"
-            + article.payload["content"]
-            + "\n"
-            + retrieved_articles_plus_one[i].payload["content"],
-            chatbot_agent.convert_chat_history_to_string(user_only=True),
+            (retrieved_articles_minus_one[i].payload["content"] + "\n" +
+             article.payload["content"] + "\n" +
+             retrieved_articles_plus_one[i].payload["content"]),
+            chatbot_agent.convert_chat_history_to_string(
+                user_only=True, remove_resource=True
+            ),
             query,
             article.payload["link"],
             article.score,

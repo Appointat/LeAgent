@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import pandas as pd
 import re
 import requests
-import openai
+from src import get_tokens_number, get_emmbedings
 
 # Import Qdrant libraries.
 from qdrant_client import QdrantClient
@@ -58,7 +58,7 @@ def prep_book_data(
                 print(f"Processing {md_title}: {link}...")
 
                 md_content_split = split_text_into_chunks(
-                    md_content, chunk_size=250
+                    md_content, chunk_max_tokens=300
                 )  # Split the text into chunks.
                 for text in md_content_split:
                     if not text:
@@ -168,27 +168,9 @@ def update_collection_to_database(
         )
 
 
-def get_emmbedings(text):
-    """
-    Get the embeddings of the text.
-
-    Args:
-        text (str): The text to get the embeddings of.
-
-    Returns:
-        embedded_query (list): The embeddings of the text.
-    """
-    load_dotenv()
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    embedded_query = openai.Embedding.create(
-        input=text,
-        model="text-embedding-ada-002",
-    )["data"][0]["embedding"]
-
-    return embedded_query  # It is a vector of numbers.
-
-
-def split_text_into_chunks(text, delimiter="\n# ", chunk_size=500):
+def split_text_into_chunks(
+    text, delimiter="\n# ", chunk_max_tokens=600, MAX_TOKENS=4096
+):
     begin_pattern = r"---.*?---"
     text = re.sub(begin_pattern, "", text, flags=re.DOTALL)
     text = "\n" + text
@@ -205,28 +187,19 @@ def split_text_into_chunks(text, delimiter="\n# ", chunk_size=500):
 
     final_chunks = []
     for chunk in chunks:
-        words = re.split(
-            r"(\s)", chunk
-        )  # Split a string using regex, preserving spaces and newlines.
-        current_chunk_words = []
-        current_word_count = 0
-        for word in words:
-            # If word is a space or a newline, don't count the word; otherwise, add 1 to the word count.
-            if word.strip() != "":
-                current_word_count += 1
-            current_chunk_words.append(word)
+        # Split the chunk into the sentences.
+        sentences = re.split(r"([.?!])", chunk)
+        current_n_sentences = []
+        for sentence in sentences:
+            current_n_sentences.append(sentence)
 
             # When the number of words reaches chunk_size, add a new chunk.
-            if current_word_count >= chunk_size:
-                final_chunks.append("".join(current_chunk_words))
-                current_chunk_words = []
-                current_word_count = 0
+            if get_tokens_number("".join(current_n_sentences)) >= chunk_max_tokens:
+                final_chunks.append("".join(current_n_sentences))
+                current_n_sentences = []
         # Add the last chunk.
-        if current_chunk_words:
-            final_chunks.append("".join(current_chunk_words))
-
-    # Count the number of words in a string.
-    count_words_in_string = lambda s: len(s.split())
+        if current_n_sentences:
+            final_chunks.append("".join(current_n_sentences))
 
     for i, chunk in enumerate(final_chunks):
         try:
@@ -238,32 +211,33 @@ def split_text_into_chunks(text, delimiter="\n# ", chunk_size=500):
 
                 # If the code cell can be inserted without exceeding the chunk size, do it.
                 if (
-                    count_words_in_string(
-                        chunk.replace("TEMPLATE_CODE_CELL", code_cell, 1)
-                    )
-                    <= 1000
-                ):  # chunk_size
+                    get_tokens_number(chunk.replace("TEMPLATE_CODE_CELL", code_cell, 1))
+                    <= chunk_max_tokens * 2
+                ):
                     chunk = chunk.replace("TEMPLATE_CODE_CELL", code_cell, 1)
                 # If not, insert as many lines as possible.
                 else:
-                    temp_chunk = chunk
+                    code_cell_lines = []
                     for line in code_cell_lines:
                         # If the next line can be inserted without exceeding the chunk size, do it.
                         if (
-                            count_words_in_string(
-                                temp_chunk.replace("TEMPLATE_CODE_CELL", line, 1)
+                            get_tokens_number(
+                                chunk.replace(
+                                    "TEMPLATE_CODE_CELL", "\n".join(code_cell_lines), 1
+                                )
                             )
-                            <= 1000
+                            <= chunk_max_tokens * 2
                         ):  # chunk_size
-                            temp_chunk = temp_chunk.replace(
-                                "TEMPLATE_CODE_CELL", line, 1
-                            )
+                            code_cell_lines.append(line)
                         # If not, put the remaining lines back into code_cells and stop.
                         else:
                             break
-                    chunk = temp_chunk
+                    chunk = chunk.replace(
+                        "TEMPLATE_CODE_CELL", "\n".join(code_cell_lines)
+                    )
 
             final_chunks[i] = chunk
+            print(f"Tokens number of chunk {i}: {get_tokens_number(chunk)}")
         except IndexError:
             warnings.warn(
                 "Code cells mismatch. The number of 'TEMPLATE_CODE_CELL' placeholders and actual code cells do not match."
