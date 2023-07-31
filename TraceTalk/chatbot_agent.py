@@ -9,7 +9,6 @@ from src import get_emmbedings, get_tokens_number
 # Import OpenAI API and Langchain libraries.
 import openai
 from langchain.llms import OpenAI
-from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.callbacks.streaming_stdout_final_only import (
     FinalStreamingStdOutCallbackHandler,
@@ -49,7 +48,7 @@ class ChatbotAgent:
         self._openai_api_key = openai_api_key
         os.environ["OPENAI_API_KEY"] = self._openai_api_key
         self.llm = OpenAI(temperature=0.8, model_name="gpt-3.5-turbo")
-        self.llm_dot3 = OpenAI(temperature=0.3, model_name="gpt-3.5-dot3")
+        self.llm_dot3 = OpenAI(temperature=0.3, model_name="gpt-3.5-turbo")
         self.llm_streaming = OpenAI(
             streaming=True,
             callbacks=[FinalStreamingStdOutCallbackHandler()],
@@ -136,6 +135,7 @@ class ChatbotAgent:
         Returns:
             chatbot_answer (str): The chatbot's response to the user's query.
         """
+        MAX_TOKENS_CHAT_HISTORY = 800
         n = len(answer_list)
 
         if n == 0:
@@ -143,35 +143,40 @@ class ChatbotAgent:
         else:
             chat_history = self.convert_chat_history_to_string()
             if (
-                get_tokens_number(chat_history) >= 2000
+                get_tokens_number(chat_history) >= MAX_TOKENS_CHAT_HISTORY
             ):  # Max token length for GPT-3 is 4096.
                 print(
-                    f"Eorr: chat history is too long, tokens: {get_tokens_number(chat_history)}."
+                    f"Warning: chat history is too long, tokens: {get_tokens_number(chat_history)}."
                 )
-                chat_history = self.convert_chat_history_to_string(user_only=True)
+                chat_history = self.convert_chat_history_to_string(
+                    user_only=True, remove_resource=True
+                )
 
             prompt = combine_prompt(
                 chat_history=chat_history,
                 query=query,
                 answer_list=answer_list,
                 link_list_list=link_list_list,
+                MAX_TOKENS=4096 - 700 - MAX_TOKENS_CHAT_HISTORY,
             )
-            # chain = LLMChain(
-            #     llm=self.llm_streaming,
+            prompt = self.convert_links_in_text(prompt)
+
+            # responses = openai.Completion.create(
+            #     engine="davinci",
             #     prompt=prompt,
-            #     verbose=True,
+            #     max_tokens=500,
+            #     stream=True
             # )
-            # combine_answer = self.llm_streaming(prompt)
-            # combine_answer = self.llm_dot3(prompt)
-            # combine_answer = self.convert_links_in_text(combine_answer)
-            if prompt.count("sorry") >= 2:
-                combine_answer = ""
-                for answer in answer_list:
-                    combine_answer += answer
-                return combine_answer
-                # return answer_list[0]
-            return self.convert_links_in_text(prompt)
-            # return combine_answer
+
+            if get_tokens_number(prompt) > 4096 - 500:
+                return "Tokens number of the prompt is too long: {}.".format(
+                    get_tokens_number(prompt)
+                )
+            else:
+                print("Tokens number of the prompt: {}.".format(get_tokens_number(prompt)))
+
+            # return responses[0]["text"]
+            return prompt
 
     # Update chat history.
     def update_chat_history(self, query, answer):
@@ -191,7 +196,12 @@ class ChatbotAgent:
 
     # Convert chat history to string.
     def convert_chat_history_to_string(
-        self, new_query="", new_answser="", user_only=False, chatbot_only=False
+        self,
+        new_query="",
+        new_answser="",
+        user_only=False,
+        chatbot_only=False,
+        remove_resource=False,
     ):
         """
         Convert the chat history to a string.
@@ -214,7 +224,10 @@ class ChatbotAgent:
             for message in self.chat_history:
                 if message["role"] == "chatbot" and ~user_only:
                     # Deleet the text (the text until to end) begin with "REFERENCE:" in the message['content'], because we do not need it.
-                    chat_string += f"[{message['role']}]: {message['content'].split('REFERENCE:', 1)[0]} \n"
+                    if remove_resource:
+                        chat_string += f"[{message['role']}]: {message['content'].split('RESOURCE:', 1)[0].split('REFERENCE', 1)[0]} \n"
+                    else:
+                        chat_string += f"[{message['role']}]: {message['content']} \n"
                 elif message["role"] == "user" and ~chatbot_only:
                     chat_string += f"[{message['role']}]: {message['content']} \n"
         if new_query:
