@@ -79,6 +79,5 @@ RESOURCE:
 ANSWER THE QUESTION "{{query}}", FINAL A VERBOSE ANSWER, language used for answers is CONSISTENT with QUESTION:
 """
 
-    # prompt = PromptTemplate(template=template, input_variables=["query", "chat_history"], template_format="jinja2", validate_template=False) # Parameter the prompt template
     prompt = Template(template).render(query=query, chat_history=chat_history)
     return prompt
