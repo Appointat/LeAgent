@@ -135,7 +135,7 @@ class ChatbotAgent:
         Returns:
             chatbot_answer (str): The chatbot's response to the user's query.
         """
-        MAX_TOKENS_CHAT_HISTORY = 800
+        MAX_TOKENS_CHAT_HISTORY = 1000
         n = len(answer_list)
 
         if n == 0:
@@ -157,25 +157,17 @@ class ChatbotAgent:
                 query=query,
                 answer_list=answer_list,
                 link_list_list=link_list_list,
-                MAX_TOKENS=4096 - 700 - MAX_TOKENS_CHAT_HISTORY,
+                MAX_TOKENS=4096 - 1000,
             )
             prompt = self.convert_links_in_text(prompt)
 
-            # responses = openai.Completion.create(
-            #     engine="davinci",
-            #     prompt=prompt,
-            #     max_tokens=500,
-            #     stream=True
-            # )
-
-            if get_tokens_number(prompt) > 4096 - 500:
+            if get_tokens_number(prompt) > 4096 - 1000:
                 return "Tokens number of the prompt is too long: {}.".format(
                     get_tokens_number(prompt)
                 )
             else:
                 print("Tokens number of the prompt: {}.".format(get_tokens_number(prompt)))
 
-            # return responses[0]["text"]
             return prompt
 
     # Update chat history.
