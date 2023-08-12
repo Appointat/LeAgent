@@ -14,7 +14,7 @@ from qdrant_client.http import models as rest
 
 
 def prep_book_data(
-    csv_file_path=r"TraceTalk\vector-db-persist-directory\book dada\book data.csv",
+    csv_file_path=r"vector-db-persist-directory\book dada\book data.csv",
 ):
     """
     This function prepares the book data for the vector database.
