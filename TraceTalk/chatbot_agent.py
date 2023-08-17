@@ -166,7 +166,9 @@ class ChatbotAgent:
                     get_tokens_number(prompt)
                 )
             else:
-                print("Tokens number of the prompt: {}.".format(get_tokens_number(prompt)))
+                print(
+                    "Tokens number of the prompt: {}.".format(get_tokens_number(prompt))
+                )
 
             return prompt
 
@@ -203,6 +205,7 @@ class ChatbotAgent:
             new_answser (str): The chatbot's response to the user's query.
             user_only (bool): If True, only return the user's queries.
             chatbot_only (bool): If True, only return the chatbot's responses.
+            remove_resource (bool): If True, remove the resource from the chatbot's responses.
 
         Returns:
             chat_string (str): The chat history as a string.
