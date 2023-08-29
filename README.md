@@ -25,7 +25,7 @@ Stepping into the future of conversational AI, we are thrilled to introduce Trac
 
 ## The Novelty of TraceTalk 📚
 
-Ditching the stereotype of conventional chatbots, TraceTalk is conceived as an AI-fueled conversational companion with a primary aim to facilitate learning in an exciting and immersive manner. Deriving insights from New Bing’s innovative interactive solutions, TraceTalk is engineered to be more than a mere provider of information. It morphs into your personal and interactive learning assistant, designed to transform the way we learn and interact with information, which seamlessly **integrates relevant references by providing correct links, illustrations, video jump links, code blocks, and other components**. This integration provides a rich, context-driven learning experience that extends beyond the usual confines of traditional learning mechanisms. 🚀
+Ditching the stereotype of conventional chatbots, TraceTalk is conceived as an AI-fueled conversational companion with a primary aim to facilitate learning in an exciting and immersive manner. Deriving insights from New Bing’s innovative interactive solutions, TraceTalk is engineered to be more than a mere provider of information. It morphs into your personal and interactive learning assistant, designed to transform the way we learn and interact with information, which seamlessly **integrates relevant references by providing correct links, illustrations, video jump links, code blocks, and other components**. This integration provides a rich, context-driven learning experience that extends beyond the usual confines of traditional learning mechanisms.
 
 The core of our AI taps into the prodigious **knowledge repository available** on [Ocademy](https://ocademy-ai.github.io/machine-learning/intro.html), an open-source educational initiative. As a result, TraceTalk is empowered to pull data from an incessantly evolving and expanding base of knowledge, ensuring your interactions are always current, informative, and enriching.
 
@@ -39,7 +39,7 @@ Our frontend is bolstered by the efficient **Next.js** framework which excels at
 
 The uniqueness of TraceTalk is deeply rooted in its technological infrastructure. Powering this conversational AI marvel is OpenAI's **GPT-3.5 Turbo API**, positioning it amongst the most sophisticated conversational AIs currently available. In addition, our engineering team has innovatively utilized Python's multithreading capabilities and queue systems to handle substantial traffic, thereby ensuring seamless interactions irrespective of the scale. 🌐
 
-In the realm of database management, TraceTalk leverages the substantial benefits of cloud technology. By opting to train our models and store our data on the cloud, we have geared TraceTalk to handle massive volumes of data and deliver the optimal conversational experience. 💽
+In the realm of database management, TraceTalk leverages the substantial benefits of cloud technology. By opting to train our models and store our data on the cloud, we have geared TraceTalk to handle massive volumes of data and deliver the optimal conversational experience.
 
 ## The Dawn of Conversational Evolution 💬
 
