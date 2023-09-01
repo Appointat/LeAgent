@@ -51,9 +51,9 @@ At TraceTalk, we firmly believe that the potential of AI and machine learning ex
 
 In addition, TraceTalk supports what we call 'selfish data.' Our database currently hosts over 400 documents in private domains 🔐, and yet we're just scratching the surface of the model's capacity.
 
-We also acknowledge that interactions may occasionally veer off-topic or include inappropriate content 🙅. To manage such situations, we've built in mechanisms to filter out these interactions and guide the conversation back to its intended course 🧭.
+We also acknowledge that interactions may occasionally veer off-topic or include inappropriate content 🙅. To manage such situations, we've built in mechanisms to filter out these interactions and guide the conversation back to its intended course.
 
-In essence, TraceTalk is more than a chatbot—it's the next step in interactive learning. Our commitment to comprehensive implementation and meticulous project management ensures not only accurate and relevant responses but a seamless, informative, and engaging user experience 🌟. Welcome to the future of conversation, and welcome to TraceTalk 🚀.
+In essence, TraceTalk is more than a chatbot—it's the next step in interactive learning. Our commitment to comprehensive implementation and meticulous project management ensures not only accurate and relevant responses but a seamless, informative, and engaging user experience. Welcome to the future of conversation, and welcome to TraceTalk 🚀.
 
 An answer from _TraceTalk_:
 
