@@ -37,7 +37,7 @@ Our frontend is bolstered by the efficient **Next.js** framework which excels at
 
 ## A Technological Marvel 🤖
 
-The uniqueness of TraceTalk is deeply rooted in its technological infrastructure. Powering this conversational AI marvel is OpenAI's **GPT-3.5 Turbo API**, positioning it amongst the most sophisticated conversational AIs currently available. In addition, our engineering team has innovatively utilized Python's multithreading capabilities and queue systems to handle substantial traffic, thereby ensuring seamless interactions irrespective of the scale. 🌐
+The uniqueness of TraceTalk is deeply rooted in its technological infrastructure. Powering this conversational AI marvel is OpenAI's **GPT-3.5 Turbo API**, positioning it amongst the most sophisticated conversational AIs currently available. In addition, our engineering team has innovatively utilized Python's multithreading capabilities and queue systems to handle substantial traffic, thereby ensuring seamless interactions irrespective of the scale.
 
 In the realm of database management, TraceTalk leverages the substantial benefits of cloud technology. By opting to train our models and store our data on the cloud, we have geared TraceTalk to handle massive volumes of data and deliver the optimal conversational experience.
 
