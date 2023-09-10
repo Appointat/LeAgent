@@ -40,7 +40,7 @@ def main(message="", messages=[""]):
         top_k=4,
     )
 
-    article_ids_plus_one = [min(article.id + 1, 945 - 1) for article in query_results]
+    article_ids_plus_one = [min(article.id + 1, 932 - 1) for article in query_results]
     article_ids_minus_one = [max(article.id - 1, 0) for article in query_results]
     retrieved_articles_plus_one = chatbot_agent.client.retrieve(
         collection_name="Articles", ids=article_ids_plus_one
