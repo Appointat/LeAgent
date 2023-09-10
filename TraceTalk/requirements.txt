@@ -7,3 +7,5 @@ pandas==1.3.3
 requests==2.26.0
 jinja2==3.0.1
 dotenv==0.19.1
+python-dotenv==latest
+tiktoken==latest
