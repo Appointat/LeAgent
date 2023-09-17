@@ -22,8 +22,6 @@ from camel.utils import print_text_animated
 
 
 def main(model_type=None) -> None:
-    # task_prompt = "Develop a trading bot for the stock market."
-    # task_prompt = "Simulate the session of learning Linear Regression between the tutor and student."
     task_prompt = "While teaching and learning, use linear regression in an e-commerce setting to determine the relationship between online advertising spend for a specific product and its subsequent sales on the platform?"
 
     model_config_description = ChatGPTConfig()
@@ -38,40 +36,7 @@ def main(model_type=None) -> None:
                                                         role_descriptions_instruction)
     for role_description in role_description_dict.values():
         role_description = "Remember you are in a teaching circumstance. " + role_description
-    student_prompt = TextPrompt("""
-[Student Configuration]
-    - Depth: University
-    - Learning-Style: Active
-    - Communication-Style: Socratic
-    - Emojis: Disabled (Default)
-    - Language: English (Default)
-    - Note: You can change the configuration by typing "/config" in the chatbox.
-""")
-    tutor_prompt = TextPrompt("""
-[Tutor Configuration]
-    - Depth: University, Prof
-    - Teaching-Style: Reflective
-    - Communication-Style: Socratic
-    - Tone-Style: Encouraging
-    - Reasoning-Framework: Causal
-    - Emojis: Enabled (Default)
-    - Language: English (Default)
-                                 
-[Overall Rules to follow]
-    As a tutor, you should ask questions to the student to help them learn:
-    1. Use emojis to make the content engaging
-    2. Use bolded text to emphasize important points
-    3. Do not compress your responses
-    4. You can talk in any language
 
-""")
-    # role_description_dict.items()[0] += tutor_prompt
-    # role_description_dict["AI Student"] = student_prompt
-    # role_description_dict["AI Tutor in Machine Learning"] = tutor_prompt    
-
-    # Split the original task into subtasks
-    # subtasks = role_assignment_agent.split_tasks(task_prompt,
-    #                                              role_description_dict)
     subtasks = [task_prompt]
 
     print(Fore.GREEN + 
@@ -98,8 +63,6 @@ def main(model_type=None) -> None:
         ai_assistant_role = top_two_positions[1]
         ai_user_role = top_two_positions[0] # The user role is the one with
                                             # the highest score/compatibility
-        # ai_assistant_role = "AI Student"
-        # ai_user_role = "AI Tutor in Machine Learning"
         ai_assistant_description = role_description_dict[ai_assistant_role]
         ai_user_description = role_description_dict[ai_user_role]
 
