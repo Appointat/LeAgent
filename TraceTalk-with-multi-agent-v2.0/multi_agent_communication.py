@@ -15,29 +15,34 @@ from colorama import Fore
 
 from camel.agents.role_assignment_agent import RoleAssignmentAgent
 from camel.configs import ChatGPTConfig
-from camel.prompts import TextPrompt
 from camel.societies import RolePlaying
 from camel.typing import TaskType
 from camel.utils import print_text_animated
 
 
 def main(model_type=None) -> None:
-    task_prompt = "While teaching and learning, use linear regression in an e-commerce setting to determine the relationship between online advertising spend for a specific product and its subsequent sales on the platform?"
+    task_prompt = "show me python code implementing the deep first traverse."
 
     model_config_description = ChatGPTConfig()
     role_assignment_agent = RoleAssignmentAgent(
         model=model_type, model_config=model_config_description)
 
     # Generate role with descriptions
-    role_descriptions_instruction = "add one characteristic of tutor that he alsways ask questions to students to guide in their learning at the end of each round."
     role_description_dict = role_assignment_agent.run(task_prompt=task_prompt,
-                                                      num_roles=2,
-                                                      role_descriptions_instruction=
-                                                        role_descriptions_instruction)
-    for role_description in role_description_dict.values():
-        role_description = "Remember you are in a teaching circumstance. " + role_description
+                                                      num_roles=4)
 
-    subtasks = [task_prompt]
+    # Split the original task into subtasks
+    subtasks_with_dependencies_dict = \
+        role_assignment_agent.split_tasks(task_prompt,
+                                          role_description_dict)
+    subtasks = [
+        subtasks_with_dependencies_dict[key]["description"]
+        for key in sorted(subtasks_with_dependencies_dict.keys())
+    ]
+
+    parallel_subtask_pipelines = \
+        role_assignment_agent.get_task_execution_order(
+            subtasks_with_dependencies_dict)
 
     print(Fore.GREEN + 
           f"List of {len(role_description_dict)} roles with description:")
@@ -48,13 +53,20 @@ def main(model_type=None) -> None:
     print(Fore.YELLOW + f"List of {len(subtasks)} subtasks:")
     for i, subtask in enumerate(subtasks):
         print(Fore.YELLOW + f"Subtask {i + 1}: {subtask}")
+    for idx, subtask_group in enumerate(parallel_subtask_pipelines, 1):
+        print(Fore.YELLOW + f"Pipeline {idx}: {', '.join(subtask_group)}")
     print(Fore.WHITE + "==========================================")
-    
-    for one_subtask in subtasks:
+
+    # Resolve the subtasks in sequence based on the dependency graph
+    for one_subtask in (subtask for pipeline in parallel_subtask_pipelines
+                        for subtask in pipeline):
+        one_subtask = \
+            subtasks_with_dependencies_dict[one_subtask]["description"]
+        # Get the role with the highest compatibility score
         role_compatibility_scores_dict = (
             role_assignment_agent.evaluate_role_compatibility(
                 one_subtask, role_description_dict))
-        
+
         # Get the top two roles with the highest compatibility scores
         top_two_positions = \
             sorted(role_compatibility_scores_dict.keys(),
@@ -72,14 +84,14 @@ def main(model_type=None) -> None:
               f"{ai_assistant_description}\n")
         print(Fore.BLUE + f"AI User Role: {ai_user_role}\n"
               f"{ai_user_description}\n")
-        
+
         # You can use the following code to play the role-playing game
         sys_msg_meta_dicts = [
             dict(assistant_role=ai_assistant_role, user_role=ai_user_role,
                 assistant_description=ai_assistant_description,
                 user_description=ai_user_description) for _ in range(2)
         ]
-        
+
         role_play_session = RolePlaying(
             assistant_role_name=ai_assistant_role,
             user_role_name=ai_user_role,
