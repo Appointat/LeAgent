@@ -12,7 +12,9 @@
 # limitations under the License.
 # =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
 from colorama import Fore
+import json
 
+from camel.agents.insight_agent import InsightAgent
 from camel.agents.role_assignment_agent import RoleAssignmentAgent
 from camel.configs import ChatGPTConfig
 from camel.societies import RolePlaying
@@ -21,20 +23,26 @@ from camel.utils import print_text_animated
 
 
 def main(model_type=None) -> None:
-    task_prompt = "show me python code implementing the deep first traverse."
+    task_prompt = "Develop a trading bot for the stock market."
+    # task_prompt = "Show me python code implementing the deep first traverse."
+    # task_prompt = "Write a easy blog about Computer Science Education."
 
     model_config_description = ChatGPTConfig()
     role_assignment_agent = RoleAssignmentAgent(
         model=model_type, model_config=model_config_description)
+    insight_agent = InsightAgent(model=model_type,
+                                 model_config=model_config_description)
 
     # Generate role with descriptions
     role_description_dict = role_assignment_agent.run(task_prompt=task_prompt,
-                                                      num_roles=4)
+                                                      num_roles=3)
 
     # Split the original task into subtasks
     subtasks_with_dependencies_dict = \
         role_assignment_agent.split_tasks(task_prompt,
                                           role_description_dict)
+    print(Fore.BLUE + "Dependencies among subtasks: " +
+          json.dumps(subtasks_with_dependencies_dict, indent=4))
     subtasks = [
         subtasks_with_dependencies_dict[key]["description"]
         for key in sorted(subtasks_with_dependencies_dict.keys())
@@ -44,6 +52,10 @@ def main(model_type=None) -> None:
         role_assignment_agent.get_task_execution_order(
             subtasks_with_dependencies_dict)
 
+    # Record the insights from chat history of the assistant
+    insights_pre_subtasks = {ID_subtask: "" for ID_subtask
+                             in subtasks_with_dependencies_dict.keys()}
+
     print(Fore.GREEN + 
           f"List of {len(role_description_dict)} roles with description:")
     for role_name in role_description_dict.keys():
@@ -52,16 +64,37 @@ def main(model_type=None) -> None:
     print(Fore.YELLOW + f"Original task prompt:\n{task_prompt}")
     print(Fore.YELLOW + f"List of {len(subtasks)} subtasks:")
     for i, subtask in enumerate(subtasks):
-        print(Fore.YELLOW + f"Subtask {i + 1}: {subtask}")
+        print(Fore.YELLOW + f"Subtask {i + 1}:\n{subtask}")
     for idx, subtask_group in enumerate(parallel_subtask_pipelines, 1):
         print(Fore.YELLOW + f"Pipeline {idx}: {', '.join(subtask_group)}")
     print(Fore.WHITE + "==========================================")
 
     # Resolve the subtasks in sequence based on the dependency graph
-    for one_subtask in (subtask for pipeline in parallel_subtask_pipelines
-                        for subtask in pipeline):
+    for ID_one_subtask in (subtask for pipeline in parallel_subtask_pipelines
+                           for subtask in pipeline):
+        # Get the description of the subtask
         one_subtask = \
-            subtasks_with_dependencies_dict[one_subtask]["description"]
+            subtasks_with_dependencies_dict[ID_one_subtask]["description"]
+        # Get the insights from the chat history of based on the dependencies
+        ID_pre_subtasks = \
+            subtasks_with_dependencies_dict[ID_one_subtask]["dependencies"]
+
+        if len(ID_pre_subtasks) != 0:
+            insights_pre_subtask = \
+                "====== NovaDive & QuestXplorer of PREVIOUS CONVERSATION " + \
+                "ROUND =====\n" + \
+                "NovaDive and QuestXplorer are agent names we " +\
+                "brainstormed for a system designed to decompose text or " + \
+                "code, identify post-2022 unknowns, and craft insightful " + \
+                "questions based on prior conversation rules. \n" + \
+                "The achievements or insights of previous conversation " + \
+                "are following:\n" + \
+                    "\n\n".join(insights_pre_subtasks[pre_subtask]
+                                for pre_subtask in ID_pre_subtasks)
+        else:
+            insights_pre_subtask = ""
+        print(Fore.WHITE + insights_pre_subtask + "\n")
+
         # Get the role with the highest compatibility score
         role_compatibility_scores_dict = (
             role_assignment_agent.evaluate_role_compatibility(
@@ -88,7 +121,8 @@ def main(model_type=None) -> None:
         # You can use the following code to play the role-playing game
         sys_msg_meta_dicts = [
             dict(assistant_role=ai_assistant_role, user_role=ai_user_role,
-                assistant_description=ai_assistant_description,
+                assistant_description=ai_assistant_description + \
+                    insights_pre_subtask,
                 user_description=ai_user_description) for _ in range(2)
         ]
 
@@ -103,6 +137,8 @@ def main(model_type=None) -> None:
             extend_sys_msg_meta_dicts=sys_msg_meta_dicts,
             output_language="zh"
         )
+
+        chat_history_assistant = f"The TASK of the context text is:\n{one_subtask}\n"
 
         chat_turn_limit, n = 50, 0
         input_assistant_msg, _ = role_play_session.init_chat()
@@ -132,7 +168,17 @@ def main(model_type=None) -> None:
             if "CAMEL_TASK_DONE" in user_response.msg.content:
                 break
 
+            # Generate the insights from the chat history
+            chat_history_assistant += (f"===== [{n}] ===== \n"
+                                       f"{user_response.msg.content}\n"
+                                       f"{assistant_response.msg.content}\n")
+
             input_assistant_msg = assistant_response.msg
+
+        insights_instruction = ("The CONTEXT TEXT is related to code implementation. " +
+                                "Pay attention to the code structure code environment.")
+        insights = insight_agent.run(context_text=chat_history_assistant)
+        insights_pre_subtasks[ID_one_subtask] = insights
         
 
 if __name__ == "__main__":
