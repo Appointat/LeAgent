@@ -25,7 +25,7 @@ from camel.utils import print_text_animated
 def main(model_type=None) -> None:
     task_prompt = "Develop a trading bot for the stock market."
     # task_prompt = "Show me python code implementing the deep first traverse."
-    # task_prompt = "Write a easy blog about Computer Science Education."
+    # task_prompt = "Write a easy blog about Computer Sci   ence Education."
 
     model_config_description = ChatGPTConfig()
     role_assignment_agent = RoleAssignmentAgent(
@@ -34,13 +34,15 @@ def main(model_type=None) -> None:
                                  model_config=model_config_description)
 
     # Generate role with descriptions
-    role_description_dict = role_assignment_agent.run(task_prompt=task_prompt,
+    role_descriptions_dict = role_assignment_agent.run(task_prompt=task_prompt,
                                                       num_roles=3)
 
     # Split the original task into subtasks
     subtasks_with_dependencies_dict = \
-        role_assignment_agent.split_tasks(task_prompt,
-                                          role_description_dict)
+        role_assignment_agent.split_tasks(task_prompt=task_prompt,
+                                          role_descriptions_dict=\
+                                            role_descriptions_dict,
+                                          context_text=task_prompt)
     print(Fore.BLUE + "Dependencies among subtasks: " +
           json.dumps(subtasks_with_dependencies_dict, indent=4))
     subtasks = [
@@ -57,10 +59,10 @@ def main(model_type=None) -> None:
                              in subtasks_with_dependencies_dict.keys()}
 
     print(Fore.GREEN + 
-          f"List of {len(role_description_dict)} roles with description:")
-    for role_name in role_description_dict.keys():
+          f"List of {len(role_descriptions_dict)} roles with description:")
+    for role_name in role_descriptions_dict.keys():
         print(Fore.BLUE + f"{role_name}:\n"
-              f"{role_description_dict[role_name]}\n")
+              f"{role_descriptions_dict[role_name]}\n")
     print(Fore.YELLOW + f"Original task prompt:\n{task_prompt}")
     print(Fore.YELLOW + f"List of {len(subtasks)} subtasks:")
     for i, subtask in enumerate(subtasks):
@@ -98,7 +100,7 @@ def main(model_type=None) -> None:
         # Get the role with the highest compatibility score
         role_compatibility_scores_dict = (
             role_assignment_agent.evaluate_role_compatibility(
-                one_subtask, role_description_dict))
+                one_subtask, role_descriptions_dict))
 
         # Get the top two roles with the highest compatibility scores
         top_two_positions = \
@@ -108,8 +110,8 @@ def main(model_type=None) -> None:
         ai_assistant_role = top_two_positions[1]
         ai_user_role = top_two_positions[0] # The user role is the one with
                                             # the highest score/compatibility
-        ai_assistant_description = role_description_dict[ai_assistant_role]
-        ai_user_description = role_description_dict[ai_user_role]
+        ai_assistant_description = role_descriptions_dict[ai_assistant_role]
+        ai_user_description = role_descriptions_dict[ai_user_role]
 
         print(Fore.WHITE + "==========================================")
         print(Fore.YELLOW + f"Subtask: \n{one_subtask}\n")
@@ -178,7 +180,8 @@ def main(model_type=None) -> None:
         insights_instruction = ("The CONTEXT TEXT is related to code implementation. " +
                                 "Pay attention to the code structure code environment.")
         insights = insight_agent.run(context_text=chat_history_assistant)
-        insights_pre_subtasks[ID_one_subtask] = insights
+        insights_str = insight_agent.convert_json_to_str(insights)
+        insights_pre_subtasks[ID_one_subtask] = insights_str
         
 
 if __name__ == "__main__":
