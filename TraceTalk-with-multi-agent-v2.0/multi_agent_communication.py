@@ -19,18 +19,17 @@ from camel.agents.insight_agent import InsightAgent
 from camel.agents.role_assignment_agent import RoleAssignmentAgent
 from camel.configs import ChatGPTConfig
 from camel.societies import RolePlaying
-from camel.typing import TaskType
+from camel.typing import TaskType, ModelType
 from camel.utils import print_text_animated
 
 
 def main(model_type=None) -> None:
     task_prompt = "Develop a trading bot for the stock market."
-    task_prompt = "Technology stacks commonly used by independent developers."
 
     model_config_description = ChatGPTConfig()
     role_assignment_agent = RoleAssignmentAgent(
-        model=model_type, model_config=model_config_description)
-    insight_agent = InsightAgent(model=model_type,
+        model=None, model_config=model_config_description)
+    insight_agent = InsightAgent(model=None,
                                  model_config=model_config_description)
 
     # Generate role with descriptions
@@ -63,12 +62,11 @@ The new trading bot should be able to:
 3. Automatically adjust its strategies based on market conditions (e.g., bull markets, bear markets, high volatility).
 4. Provide a user-friendly interface where traders can set their risk levels, investment amounts, and other preferences.
 5. Offer simulation modes for back-testing strategies."""  # noqa: E501
-    context_text = ""
     subtasks_with_dependencies_dict = \
         role_assignment_agent.split_tasks(
             task_prompt=task_prompt,
             role_descriptions_dict=role_descriptions_dict,
-            num_subtasks=3,
+            num_subtasks=2,
             context_text=context_text)
 
     print(Fore.BLUE + "Dependencies among subtasks: " +
@@ -83,7 +81,7 @@ The new trading bot should be able to:
             subtasks_with_dependencies_dict)
 
     # Record the insights from chat history of the assistant
-    insights_pre_subtasks = {
+    insights_subtasks = {
         ID_subtask: ""
         for ID_subtask in subtasks_with_dependencies_dict.keys()
     }
@@ -112,17 +110,12 @@ The new trading bot should be able to:
             subtasks_with_dependencies_dict[ID_one_subtask]["dependencies"]
 
         if ID_pre_subtasks is not None and len(ID_pre_subtasks) != 0:
-            insights_pre_subtask = \
-                "====== NovaDive & QuestXplorer of PREVIOUS CONVERSATION " + \
-                "ROUND =====\n" + \
-                "NovaDive and QuestXplorer are agent names we " +\
-                "brainstormed for a system designed to decompose text or " + \
-                "code, identify post-2022 unknowns, and craft insightful " + \
-                "questions based on prior conversation rules. \n" + \
-                "The achievements of previous conversation are " + \
-                "following:\n" + \
-                "\n\n".join(insights_pre_subtasks[pre_subtask]
-                            for pre_subtask in ID_pre_subtasks)
+            insights_pre_subtask = "\n" + \
+                "====== CURRENT STATE =====\n" + \
+                "The snapshot and the context of the TASK is presentd in the following insights " +\
+                "which is close related to The \"Insctruction\" and the \"Input\":\n" + \
+                "\n".join(insights_subtasks[pre_subtask]
+                          for pre_subtask in ID_pre_subtasks)
         else:
             insights_pre_subtask = ""
 
@@ -166,7 +159,6 @@ The new trading bot should be able to:
             task_type=TaskType.
             ROLE_DESCRIPTION,  # Important for role description
             with_task_specify=False,
-            task_specify_agent_kwargs=dict(model=model_type),
             extend_sys_msg_meta_dicts=sys_msg_meta_dicts,
         )
 
@@ -177,8 +169,10 @@ The new trading bot should be able to:
         input_assistant_msg, _ = role_play_session.init_chat()
         while n < chat_turn_limit:
             n += 1
+            print(Fore.RED + f"assistant_response:\n{input_assistant_msg.content}")
             assistant_response, user_response = role_play_session.step(
                 input_assistant_msg)
+            print(Fore.RED + f"user_response:\n{user_response.msg.content}")
 
             if assistant_response.terminated:
                 print(Fore.GREEN +
@@ -214,7 +208,8 @@ The new trading bot should be able to:
         #                         "code structure code environment.")
         insights = insight_agent.run(context_text=chat_history_assistant)
         insights_str = insight_agent.convert_json_to_str(insights)
-        insights_pre_subtasks[ID_one_subtask] = insights_str
+        insights_subtasks[ID_one_subtask] = insights_str
+        print(Fore.RED + f"insights_subtasks:\n{json.dumps(insights_subtasks, indent=4)}")
 
 
 if __name__ == "__main__":
