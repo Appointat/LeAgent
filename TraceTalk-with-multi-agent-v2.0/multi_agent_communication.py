@@ -25,6 +25,7 @@ from camel.utils import print_text_animated
 
 def main(model_type=None) -> None:
     task_prompt = "Develop a trading bot for the stock market."
+    task_prompt = "Implementing Authentication Middleware in a Node.js Application"
 
     model_config_description = ChatGPTConfig()
     role_assignment_agent = RoleAssignmentAgent(
@@ -62,11 +63,26 @@ The new trading bot should be able to:
 3. Automatically adjust its strategies based on market conditions (e.g., bull markets, bear markets, high volatility).
 4. Provide a user-friendly interface where traders can set their risk levels, investment amounts, and other preferences.
 5. Offer simulation modes for back-testing strategies."""  # noqa: E501
+    context_text = """## Context
+In an ongoing project of developing a web application, there is a need to ensure that only authenticated users can access certain routes. Your task is to implement an authentication middleware using Node.js, Express, and JWT (JSON Web Tokens).
+
+## Environment Information
+- **Framework**: Express.js (Version 4.x)
+- **Runtime**: Node.js (Version 14.x)
+- **Authentication Library**: jsonwebtoken (Version 8.x)
+- **Database**: MongoDB (Version 4.x) with Mongoose ORM
+- **Version Control**: Git (branch: `auth-middleware`)
+- **Testing Framework**: Jest (Version 26.x)
+
+## Current Status
+- The basic structure of the Express application is in place with route handlers, models, and controllers.
+- Some routes have been defined, but there's no mechanism to protect the routes that should require authentication.
+- MongoDB is set up and the user schema has been defined in Mongoose.
+- No authentication middleware exists yet, and JWT has not been configured."""
     subtasks_with_dependencies_dict = \
         role_assignment_agent.split_tasks(
             task_prompt=task_prompt,
             role_descriptions_dict=role_descriptions_dict,
-            num_subtasks=2,
             context_text=context_text)
 
     print(Fore.BLUE + "Dependencies among subtasks: " +
@@ -155,11 +171,12 @@ The new trading bot should be able to:
             assistant_role_name=ai_assistant_role,
             user_role_name=ai_user_role,
             task_prompt=one_subtask,
-            model_type=model_type,
+            model_type=ModelType.GPT_3_5_TURBO_16K,
             task_type=TaskType.
             ROLE_DESCRIPTION,  # Important for role description
             with_task_specify=False,
             extend_sys_msg_meta_dicts=sys_msg_meta_dicts,
+            output_language="Chinese",
         )
 
         chat_history_assistant = ("The TASK of the context text is:\n" +
