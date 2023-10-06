@@ -25,7 +25,7 @@ from camel.utils import print_text_animated
 
 def main(model_type=None) -> None:
     task_prompt = "Develop a trading bot for the stock market."
-    task_prompt = "Implementing Authentication Middleware in a Node.js Application"
+    task_prompt = "Implementing Authentication Middleware in a Node.js Application."
 
     model_config_description = ChatGPTConfig()
     role_assignment_agent = RoleAssignmentAgent(
@@ -186,10 +186,8 @@ In an ongoing project of developing a web application, there is a need to ensure
         input_assistant_msg, _ = role_play_session.init_chat()
         while n < chat_turn_limit:
             n += 1
-            print(Fore.RED + f"assistant_response:\n{input_assistant_msg.content}")
             assistant_response, user_response = role_play_session.step(
                 input_assistant_msg)
-            print(Fore.RED + f"user_response:\n{user_response.msg.content}")
 
             if assistant_response.terminated:
                 print(Fore.GREEN +
