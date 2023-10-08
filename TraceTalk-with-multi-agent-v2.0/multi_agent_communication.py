@@ -23,14 +23,11 @@ from camel.typing import TaskType, ModelType
 from camel.utils import print_text_animated
 
 
-def main(model_type=None) -> None:
-    task_prompt = "Develop a trading bot for the stock market."
-    task_prompt = "Implementing Authentication Middleware in a Node.js Application."
-
+def main(model_type=None, task_prompt=None, context_text=None) -> None:
     model_config_description = ChatGPTConfig()
     role_assignment_agent = RoleAssignmentAgent(
         model=None, model_config=model_config_description)
-    insight_agent = InsightAgent(model=None,
+    insight_agent = InsightAgent(model=ModelType.GPT_3_5_TURBO_16K,
                                  model_config=model_config_description)
 
     # Generate role with descriptions
@@ -41,44 +38,6 @@ def main(model_type=None) -> None:
                                                        role_names=role_names)
 
     # Split the original task into subtasks
-    context_text = """### **Enterprise Overview:**
-**Enterprise Name:** GlobalTradeCorp
-**Industry:** Financial Technology
-**Years in Business:** 15 years
-**Key Business Area:** Developing trading algorithms and financial tools for institutions and retail traders.
-
-### **Background & Need:**
-GlobalTradeCorp has always been at the forefront of financial innovations. With the advent of algorithmic trading, our institution saw a rise in demand for automated tools that can aid both retail and institutional traders. Our clientele base, ranging from hedge funds to independent day traders, has been expressing the need for a sophisticated trading bot that can adapt to the ever-changing stock market dynamics.
-
-### **Existing Infrastructure & Tools:**
-- **Trading Platforms**: Our enterprise uses a mix of MetaTrader 4, Thinkorswim, and proprietary platforms for executing trades.
-- **Data Feed**: We receive real-time data feeds from Bloomberg Terminal, which includes stock prices, news alerts, and other relevant trading information.
-- **Cloud Infrastructure**: Most of our applications are hosted on AWS, leveraging services like EC2, RDS, and Lambda.
-- **Current Bots**: We have a few basic trading bots in place, mainly for forex trading, based on predefined strategies like MACD crossovers and Bollinger Bands.
-
-### **Objective of the New Trading Bot:**
-The new trading bot should be able to:
-1. Analyze large datasets in real-time, including stock prices, news feeds, and social media sentiments.
-2. Make buy/sell decisions based on a mix of predefined strategies and adaptive AI algorithms.
-3. Automatically adjust its strategies based on market conditions (e.g., bull markets, bear markets, high volatility).
-4. Provide a user-friendly interface where traders can set their risk levels, investment amounts, and other preferences.
-5. Offer simulation modes for back-testing strategies."""  # noqa: E501
-    context_text = """## Context
-In an ongoing project of developing a web application, there is a need to ensure that only authenticated users can access certain routes. Your task is to implement an authentication middleware using Node.js, Express, and JWT (JSON Web Tokens).
-
-## Environment Information
-- **Framework**: Express.js (Version 4.x)
-- **Runtime**: Node.js (Version 14.x)
-- **Authentication Library**: jsonwebtoken (Version 8.x)
-- **Database**: MongoDB (Version 4.x) with Mongoose ORM
-- **Version Control**: Git (branch: `auth-middleware`)
-- **Testing Framework**: Jest (Version 26.x)
-
-## Current Status
-- The basic structure of the Express application is in place with route handlers, models, and controllers.
-- Some routes have been defined, but there's no mechanism to protect the routes that should require authentication.
-- MongoDB is set up and the user schema has been defined in Mongoose.
-- No authentication middleware exists yet, and JWT has not been configured."""
     subtasks_with_dependencies_dict = \
         role_assignment_agent.split_tasks(
             task_prompt=task_prompt,
@@ -87,6 +46,7 @@ In an ongoing project of developing a web application, there is a need to ensure
 
     print(Fore.BLUE + "Dependencies among subtasks: " +
           json.dumps(subtasks_with_dependencies_dict, indent=4))
+    print_and_write_md("Dependencies among subtasks: " + json.dumps(subtasks_with_dependencies_dict, indent=4), color=Fore.BLUE)
     subtasks = [
         subtasks_with_dependencies_dict[key]["description"]
         for key in sorted(subtasks_with_dependencies_dict.keys())
@@ -104,16 +64,23 @@ In an ongoing project of developing a web application, there is a need to ensure
 
     print(Fore.GREEN +
           f"List of {len(role_descriptions_dict)} roles with description:")
+    print_and_write_md(f"List of {len(role_descriptions_dict)} roles with description:", color=Fore.GREEN)
     for role_name in role_descriptions_dict.keys():
         print(Fore.BLUE + f"{role_name}:\n"
               f"{role_descriptions_dict[role_name]}\n")
+        print_and_write_md(f"{role_name}:\n{role_descriptions_dict[role_name]}\n", color=Fore.BLUE)
     print(Fore.YELLOW + f"Original task prompt:\n{task_prompt}")
+    print_and_write_md(f"Original task prompt:\n{task_prompt}", color=Fore.YELLOW)
     print(Fore.YELLOW + f"List of {len(subtasks)} subtasks:")
+    print_and_write_md(f"List of {len(subtasks)} subtasks:", color=Fore.YELLOW)
     for i, subtask in enumerate(subtasks):
         print(Fore.YELLOW + f"Subtask {i + 1}:\n{subtask}")
+        print_and_write_md(f"Subtask {i + 1}:\n{subtask}", color=Fore.YELLOW)
     for idx, subtask_group in enumerate(parallel_subtask_pipelines, 1):
         print(Fore.YELLOW + f"Pipeline {idx}: {', '.join(subtask_group)}")
+        print_and_write_md(f"Pipeline {idx}: {', '.join(subtask_group)}", color=Fore.YELLOW)
     print(Fore.WHITE + "==========================================")
+    print_and_write_md("==========================================", color=Fore.WHITE)
 
     # Resolve the subtasks in sequence based on the dependency graph
     for ID_one_subtask in (subtask for pipeline in parallel_subtask_pipelines
@@ -152,11 +119,15 @@ In an ongoing project of developing a web application, there is a need to ensure
         ai_user_description = role_descriptions_dict[ai_user_role]
 
         print(Fore.WHITE + "==========================================")
+        print_and_write_md("==========================================", color=Fore.WHITE)
         print(Fore.YELLOW + f"Subtask: \n{one_subtask}\n")
+        print_and_write_md(f"Subtask: \n{one_subtask}\n", color=Fore.YELLOW)
         print(Fore.GREEN + f"AI Assistant Role: {ai_assistant_role}\n"
               f"{ai_assistant_description}\n")
+        print_and_write_md(f"AI Assistant Role: {ai_assistant_role}\n{ai_assistant_description}\n", color=Fore.GREEN)
         print(Fore.BLUE + f"AI User Role: {ai_user_role}\n"
               f"{ai_user_description}\n")
+        print_and_write_md(f"AI User Role: {ai_user_role}\n{ai_user_description}\n", color=Fore.BLUE)
 
         # You can use the following code to play the role-playing game
         sys_msg_meta_dicts = [
@@ -167,10 +138,16 @@ In an ongoing project of developing a web application, there is a need to ensure
             for _ in range(2)
         ]
 
+        task_with_IO = "Description of TASK:\n" + \
+            subtasks_with_dependencies_dict[ID_one_subtask]["description"] + \
+            "\nInput of TASK:\n" + \
+            subtasks_with_dependencies_dict[ID_one_subtask]["input"] + \
+            "\nOutput Standard of TASK:\n" + \
+            subtasks_with_dependencies_dict[ID_one_subtask]["output_standard"]
         role_play_session = RolePlaying(
             assistant_role_name=ai_assistant_role,
             user_role_name=ai_user_role,
-            task_prompt=one_subtask,
+            task_prompt=task_with_IO,
             model_type=ModelType.GPT_3_5_TURBO_16K,
             task_type=TaskType.
             ROLE_DESCRIPTION,  # Important for role description
@@ -193,19 +170,27 @@ In an ongoing project of developing a web application, there is a need to ensure
                 print(Fore.GREEN +
                       (f"{ai_assistant_role} terminated. Reason: "
                        f"{assistant_response.info['termination_reasons']}."))
+                print_and_write_md(f"{ai_assistant_role} terminated. Reason: {assistant_response.info['termination_reasons']}.", color=Fore.GREEN)
                 break
             if user_response.terminated:
                 print(Fore.GREEN + (
                     f"{ai_user_role} terminated. "
                     f"Reason: {user_response.info['termination_reasons']}."))
+                print_and_write_md(f"{ai_user_role} terminated. Reason: {user_response.info['termination_reasons']}.", color=Fore.GREEN)
                 break
 
-            print_text_animated(
-                Fore.BLUE +
-                f"AI User: {ai_user_role}\n\n{user_response.msg.content}\n")
-            print_text_animated(Fore.GREEN +
-                                f"AI Assistant: {ai_assistant_role}\n\n" +
-                                f"{assistant_response.msg.content}\n")
+            # print_text_animated(
+            #     Fore.BLUE +
+            #     f"AI User: {ai_user_role}\n\n{user_response.msg.content}\n")
+            # print_text_animated(Fore.GREEN +
+            #                     f"AI Assistant: {ai_assistant_role}\n\n" +
+            #                     f"{assistant_response.msg.content}\n")
+            print(Fore.BLUE + f"AI User: {ai_user_role}\n\n" +
+                    f"{user_response.msg.content}\n")
+            print_and_write_md(f"AI User: {ai_user_role}\n\n{user_response.msg.content}\n", color=Fore.BLUE)
+            print(Fore.GREEN + f"AI Assistant: {ai_assistant_role}\n\n" +
+                    f"{assistant_response.msg.content}\n")
+            print_and_write_md(f"AI Assistant: {ai_assistant_role}\n\n{assistant_response.msg.content}\n", color=Fore.GREEN)
 
             if "CAMEL_TASK_DONE" in user_response.msg.content:
                 break
@@ -225,7 +210,95 @@ In an ongoing project of developing a web application, there is a need to ensure
         insights_str = insight_agent.convert_json_to_str(insights)
         insights_subtasks[ID_one_subtask] = insights_str
         print(Fore.RED + f"insights_subtasks:\n{json.dumps(insights_subtasks, indent=4)}")
+        print_and_write_md(f"insights_subtasks:\n{json.dumps(insights_subtasks, indent=4)}", color=Fore.RED)
+
+
+def print_and_write_md(text, color=Fore.RESET):
+    MD_FILE = "multi-agent-output.md"
+    COLOR_MAP_MD = {
+        Fore.BLUE: "cyan",
+        Fore.GREEN: "green",
+        Fore.YELLOW: "yellow",
+        Fore.RED: "red",
+        Fore.WHITE: "white",
+        Fore.RESET: "reset",
+        Fore.CYAN: "cyan",
+    }
+
+    import html, re
+    # Replace patterns outside of code blocks
+    def replace_outside_code_blocks(text, color):
+        # Split the text into code blocks and non-code blocks
+        blocks = re.split("```", text)
+
+        modified_blocks = []
+        for i, block in enumerate(blocks):
+            if i % 2 == 0:  # Non-code blocks
+                lines = block.split('\n')
+                modified_lines = [f"<span style='color: {COLOR_MAP_MD[color]};'>{line}</span>\n" if line else line for line in lines]
+                modified_block = '\n'.join(modified_lines)
+                modified_blocks.append(modified_block)
+            else:  # Code blocks
+                modified_blocks.append(f"\n```{block}```\n")
+        
+        return ''.join(modified_blocks)
+
+    text = "\n" + text
+    escaped_text = html.escape(text)
+
+    # Replace tabs and newlines outside of code blocks
+    md_text = replace_outside_code_blocks(escaped_text, color)
+
+    # Write to the markdown file
+    with open(MD_FILE, mode='a', encoding="utf-8") as file:
+        file.write(md_text)
 
 
 if __name__ == "__main__":
-    main()
+    task_prompt_list = [
+        "Develop a trading bot for the stock market.",
+        "Implementing Authentication Middleware in a Node.js Application.",
+    ]
+    context_content_list = [
+        """### **Enterprise Overview:**
+**Enterprise Name:** GlobalTradeCorp
+**Industry:** Financial Technology
+**Years in Business:** 15 years
+**Key Business Area:** Developing trading algorithms and financial tools for institutions and retail traders.
+
+### **Background & Need:**
+GlobalTradeCorp has always been at the forefront of financial innovations. With the advent of algorithmic trading, our institution saw a rise in demand for automated tools that can aid both retail and institutional traders. Our clientele base, ranging from hedge funds to independent day traders, has been expressing the need for a sophisticated trading bot that can adapt to the ever-changing stock market dynamics.
+
+### **Existing Infrastructure & Tools:**
+- **Trading Platforms**: Our enterprise uses a mix of MetaTrader 4, Thinkorswim, and proprietary platforms for executing trades.
+- **Data Feed**: We receive real-time data feeds from Bloomberg Terminal, which includes stock prices, news alerts, and other relevant trading information.
+- **Cloud Infrastructure**: Most of our applications are hosted on AWS, leveraging services like EC2, RDS, and Lambda.
+- **Current Bots**: We have a few basic trading bots in place, mainly for forex trading, based on predefined strategies like MACD crossovers and Bollinger Bands.
+
+### **Objective of the New Trading Bot:**
+The new trading bot should be able to:
+1. Analyze large datasets in real-time, including stock prices, news feeds, and social media sentiments.
+2. Make buy/sell decisions based on a mix of predefined strategies and adaptive AI algorithms.
+3. Automatically adjust its strategies based on market conditions (e.g., bull markets, bear markets, high volatility).
+4. Provide a user-friendly interface where traders can set their risk levels, investment amounts, and other preferences.
+5. Offer simulation modes for back-testing strategies.""",  # noqa: E501
+        """## Context
+In an ongoing project of developing a web application, there is a need to ensure that only authenticated users can access certain routes. Your task is to implement an authentication middleware using Node.js, Express, and JWT (JSON Web Tokens).
+
+## Environment Information
+- **Framework**: Express.js (Version 4.x)
+- **Runtime**: Node.js (Version 14.x)
+- **Authentication Library**: jsonwebtoken (Version 8.x)
+- **Database**: MongoDB (Version 4.x) with Mongoose ORM
+- **Version Control**: Git (branch: `auth-middleware`)
+- **Testing Framework**: Jest (Version 26.x)
+
+## Current Status
+- The basic structure of the Express application is in place with route handlers, models, and controllers.
+- Some routes have been defined, but there's no mechanism to protect the routes that should require authentication.
+- MongoDB is set up and the user schema has been defined in Mongoose.
+- No authentication middleware exists yet, and JWT has not been configured."""  # noqa: E501
+    ]
+    index = 1
+    main(task_prompt=task_prompt_list[index],
+         context_text=context_content_list[index])
