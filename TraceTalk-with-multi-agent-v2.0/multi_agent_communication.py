@@ -19,11 +19,31 @@ from camel.agents.insight_agent import InsightAgent
 from camel.agents.role_assignment_agent import RoleAssignmentAgent
 from camel.configs import ChatGPTConfig
 from camel.societies import RolePlaying
-from camel.typing import TaskType, ModelType
+from camel.typing import ModelType, TaskType
 from camel.utils import print_text_animated
 
 
 def main(model_type=None, task_prompt=None, context_text=None) -> None:
+    print(Fore.WHITE + "==========================================")
+    print_and_write_md("==========================================",
+                       color=Fore.WHITE)
+    print(Fore.RED + "Welcome to CAMEL-AI Society!")
+    print_and_write_md("Welcome to CAMEL-AI Society!", color=Fore.RED)
+    print(Fore.WHITE + "================== TASK ==================")
+    print_and_write_md("================== TASK ==================",
+                       color=Fore.WHITE)
+    print(Fore.YELLOW + f"Original task prompt:\n{task_prompt}\n")
+    print_and_write_md(f"Original task prompt:\n{task_prompt}\n",
+                       color=Fore.YELLOW)
+    print(Fore.WHITE + "================ CONTEXT ================")
+    print_and_write_md("================ CONTEXT ================",
+                       color=Fore.WHITE)
+    print(Fore.YELLOW + f"Context text:\n{context_text}\n")
+    print_and_write_md(f"Context text:\n{context_text}\n", color=Fore.YELLOW)
+    print(Fore.WHITE + "==========================================")
+    print_and_write_md("==========================================",
+                       color=Fore.WHITE)
+
     model_config_description = ChatGPTConfig()
     role_assignment_agent = RoleAssignmentAgent(
         model=None, model_config=model_config_description)
@@ -46,7 +66,9 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
 
     print(Fore.BLUE + "Dependencies among subtasks: " +
           json.dumps(subtasks_with_dependencies_dict, indent=4))
-    print_and_write_md("Dependencies among subtasks: " + json.dumps(subtasks_with_dependencies_dict, indent=4), color=Fore.BLUE)
+    print_and_write_md(
+        "Dependencies among subtasks: " +
+        json.dumps(subtasks_with_dependencies_dict, indent=4), color=Fore.BLUE)
     subtasks = [
         subtasks_with_dependencies_dict[key]["description"]
         for key in sorted(subtasks_with_dependencies_dict.keys())
@@ -64,13 +86,18 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
 
     print(Fore.GREEN +
           f"List of {len(role_descriptions_dict)} roles with description:")
-    print_and_write_md(f"List of {len(role_descriptions_dict)} roles with description:", color=Fore.GREEN)
+    print_and_write_md(
+        f"List of {len(role_descriptions_dict)} roles with " + "description:",
+        color=Fore.GREEN)
     for role_name in role_descriptions_dict.keys():
         print(Fore.BLUE + f"{role_name}:\n"
               f"{role_descriptions_dict[role_name]}\n")
-        print_and_write_md(f"{role_name}:\n{role_descriptions_dict[role_name]}\n", color=Fore.BLUE)
+        print_and_write_md(
+            f"{role_name}:\n" + f"{role_descriptions_dict[role_name]}\n",
+            color=Fore.BLUE)
     print(Fore.YELLOW + f"Original task prompt:\n{task_prompt}")
-    print_and_write_md(f"Original task prompt:\n{task_prompt}", color=Fore.YELLOW)
+    print_and_write_md(f"Original task prompt:\n{task_prompt}",
+                       color=Fore.YELLOW)
     print(Fore.YELLOW + f"List of {len(subtasks)} subtasks:")
     print_and_write_md(f"List of {len(subtasks)} subtasks:", color=Fore.YELLOW)
     for i, subtask in enumerate(subtasks):
@@ -78,9 +105,11 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
         print_and_write_md(f"Subtask {i + 1}:\n{subtask}", color=Fore.YELLOW)
     for idx, subtask_group in enumerate(parallel_subtask_pipelines, 1):
         print(Fore.YELLOW + f"Pipeline {idx}: {', '.join(subtask_group)}")
-        print_and_write_md(f"Pipeline {idx}: {', '.join(subtask_group)}", color=Fore.YELLOW)
+        print_and_write_md(f"Pipeline {idx}: {', '.join(subtask_group)}",
+                           color=Fore.YELLOW)
     print(Fore.WHITE + "==========================================")
-    print_and_write_md("==========================================", color=Fore.WHITE)
+    print_and_write_md("==========================================",
+                       color=Fore.WHITE)
 
     # Resolve the subtasks in sequence based on the dependency graph
     for ID_one_subtask in (subtask for pipeline in parallel_subtask_pipelines
@@ -95,12 +124,20 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
         if ID_pre_subtasks is not None and len(ID_pre_subtasks) != 0:
             insights_pre_subtask = "\n" + \
                 "====== CURRENT STATE =====\n" + \
-                "The snapshot and the context of the TASK is presentd in the following insights " +\
-                "which is close related to The \"Insctruction\" and the \"Input\":\n" + \
+                "The snapshot and the context of the TASK is presentd in " + \
+                "the following insights which is close related to The " + \
+                "\"Insctruction\" and the \"Input\":\n" + \
                 "\n".join(insights_subtasks[pre_subtask]
                           for pre_subtask in ID_pre_subtasks)
         else:
-            insights_pre_subtask = ""
+            insights_none_pre_subtask = insight_agent.run(
+                context_text=context_text)
+            insights_pre_subtask = "\n" + \
+                "====== CURRENT STATE =====\n" + \
+                "The snapshot and the context of the TASK is presentd in " + \
+                "the following insights which is close related to The " + \
+                "\"Insctruction\" and the \"Input\":\n" + \
+                f"{json.dumps(insights_none_pre_subtask, indent=4)}\n"
 
         # Get the role with the highest compatibility score
         role_compatibility_scores_dict = (
@@ -119,15 +156,20 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
         ai_user_description = role_descriptions_dict[ai_user_role]
 
         print(Fore.WHITE + "==========================================")
-        print_and_write_md("==========================================", color=Fore.WHITE)
+        print_and_write_md("==========================================",
+                           color=Fore.WHITE)
         print(Fore.YELLOW + f"Subtask: \n{one_subtask}\n")
         print_and_write_md(f"Subtask: \n{one_subtask}\n", color=Fore.YELLOW)
         print(Fore.GREEN + f"AI Assistant Role: {ai_assistant_role}\n"
               f"{ai_assistant_description}\n")
-        print_and_write_md(f"AI Assistant Role: {ai_assistant_role}\n{ai_assistant_description}\n", color=Fore.GREEN)
+        print_and_write_md(
+            f"AI Assistant Role: {ai_assistant_role}\n" +
+            f"{ai_assistant_description}\n", color=Fore.GREEN)
         print(Fore.BLUE + f"AI User Role: {ai_user_role}\n"
               f"{ai_user_description}\n")
-        print_and_write_md(f"AI User Role: {ai_user_role}\n{ai_user_description}\n", color=Fore.BLUE)
+        print_and_write_md(
+            f"AI User Role: {ai_user_role}\n" + f"{ai_user_description}\n",
+            color=Fore.BLUE)
 
         # You can use the following code to play the role-playing game
         sys_msg_meta_dicts = [
@@ -153,7 +195,6 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
             ROLE_DESCRIPTION,  # Important for role description
             with_task_specify=False,
             extend_sys_msg_meta_dicts=sys_msg_meta_dicts,
-            output_language="Chinese",
         )
 
         chat_history_assistant = ("The TASK of the context text is:\n" +
@@ -170,13 +211,11 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
                 print(Fore.GREEN +
                       (f"{ai_assistant_role} terminated. Reason: "
                        f"{assistant_response.info['termination_reasons']}."))
-                print_and_write_md(f"{ai_assistant_role} terminated. Reason: {assistant_response.info['termination_reasons']}.", color=Fore.GREEN)
                 break
             if user_response.terminated:
                 print(Fore.GREEN + (
                     f"{ai_user_role} terminated. "
                     f"Reason: {user_response.info['termination_reasons']}."))
-                print_and_write_md(f"{ai_user_role} terminated. Reason: {user_response.info['termination_reasons']}.", color=Fore.GREEN)
                 break
 
             # print_text_animated(
@@ -185,12 +224,17 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
             # print_text_animated(Fore.GREEN +
             #                     f"AI Assistant: {ai_assistant_role}\n\n" +
             #                     f"{assistant_response.msg.content}\n")
+            print_text_animated()
             print(Fore.BLUE + f"AI User: {ai_user_role}\n\n" +
-                    f"{user_response.msg.content}\n")
-            print_and_write_md(f"AI User: {ai_user_role}\n\n{user_response.msg.content}\n", color=Fore.BLUE)
+                  f"{user_response.msg.content}\n")
+            print_and_write_md(
+                f"AI User: {ai_user_role}\n\n" +
+                f"{user_response.msg.content}\n", color=Fore.BLUE)
             print(Fore.GREEN + f"AI Assistant: {ai_assistant_role}\n\n" +
-                    f"{assistant_response.msg.content}\n")
-            print_and_write_md(f"AI Assistant: {ai_assistant_role}\n\n{assistant_response.msg.content}\n", color=Fore.GREEN)
+                  f"{assistant_response.msg.content}\n")
+            print_and_write_md(
+                f"AI Assistant: {ai_assistant_role}\n\n" +
+                f"{assistant_response.msg.content}\n", color=Fore.GREEN)
 
             if "CAMEL_TASK_DONE" in user_response.msg.content:
                 break
@@ -209,23 +253,23 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
         insights = insight_agent.run(context_text=chat_history_assistant)
         insights_str = insight_agent.convert_json_to_str(insights)
         insights_subtasks[ID_one_subtask] = insights_str
-        print(Fore.RED + f"insights_subtasks:\n{json.dumps(insights_subtasks, indent=4)}")
-        print_and_write_md(f"insights_subtasks:\n{json.dumps(insights_subtasks, indent=4)}", color=Fore.RED)
 
 
 def print_and_write_md(text, color=Fore.RESET):
-    MD_FILE = "multi-agent-output.md"
+    import html
+    import re
+
+    MD_FILE = "examples/multi_agent/multi-agent-output.md"
     COLOR_MAP_MD = {
-        Fore.BLUE: "cyan",
-        Fore.GREEN: "green",
-        Fore.YELLOW: "yellow",
-        Fore.RED: "red",
-        Fore.WHITE: "white",
-        Fore.RESET: "reset",
-        Fore.CYAN: "cyan",
+        Fore.BLUE: 'blue',
+        Fore.GREEN: 'darkgreen',
+        Fore.YELLOW: 'darkorange',
+        Fore.RED: 'darkred',
+        Fore.WHITE: 'black',
+        Fore.RESET: 'reset',
+        Fore.CYAN: 'darkcyan',
     }
 
-    import html, re
     # Replace patterns outside of code blocks
     def replace_outside_code_blocks(text, color):
         # Split the text into code blocks and non-code blocks
@@ -235,16 +279,18 @@ def print_and_write_md(text, color=Fore.RESET):
         for i, block in enumerate(blocks):
             if i % 2 == 0:  # Non-code blocks
                 lines = block.split('\n')
-                modified_lines = [f"<span style='color: {COLOR_MAP_MD[color]};'>{line}</span>\n" if line else line for line in lines]
+                modified_lines = [
+                    f"<span style='color: {COLOR_MAP_MD[color]};'>" +
+                    f"{line}</span>\n" if line else line for line in lines
+                ]
                 modified_block = '\n'.join(modified_lines)
                 modified_blocks.append(modified_block)
             else:  # Code blocks
                 modified_blocks.append(f"\n```{block}```\n")
-        
+
         return ''.join(modified_blocks)
 
-    text = "\n" + text
-    escaped_text = html.escape(text)
+    escaped_text = html.escape("\n" + text)
 
     # Replace tabs and newlines outside of code blocks
     md_text = replace_outside_code_blocks(escaped_text, color)
@@ -255,12 +301,19 @@ def print_and_write_md(text, color=Fore.RESET):
 
 
 if __name__ == "__main__":
+    taks_prompt_trading_bot = "Develop a trading bot for the stock market."
+    taks_prompt_authentication = \
+        "Implementing Authentication Middleware in a Node.js Application."
+    taks_prompt_supply_chain = """Ensure All Customer Orders Are Fulfilled Within the Stipulated Time Frame While Minimizing Total Operational Costs:
+    - Ensure 200 units of Product X and 300 units of Product Y are delivered to Customer 1 within 10 days.
+    - Ensure 150 units of Product X are delivered to Customer 2 within 15 days."""  # noqa: E501
+
     task_prompt_list = [
-        "Develop a trading bot for the stock market.",
-        "Implementing Authentication Middleware in a Node.js Application.",
+        taks_prompt_trading_bot, taks_prompt_authentication,
+        taks_prompt_supply_chain
     ]
-    context_content_list = [
-        """### **Enterprise Overview:**
+
+    context_content_trading_bot = """### **Enterprise Overview:**
 **Enterprise Name:** GlobalTradeCorp
 **Industry:** Financial Technology
 **Years in Business:** 15 years
@@ -281,24 +334,112 @@ The new trading bot should be able to:
 2. Make buy/sell decisions based on a mix of predefined strategies and adaptive AI algorithms.
 3. Automatically adjust its strategies based on market conditions (e.g., bull markets, bear markets, high volatility).
 4. Provide a user-friendly interface where traders can set their risk levels, investment amounts, and other preferences.
-5. Offer simulation modes for back-testing strategies.""",  # noqa: E501
-        """## Context
-In an ongoing project of developing a web application, there is a need to ensure that only authenticated users can access certain routes. Your task is to implement an authentication middleware using Node.js, Express, and JWT (JSON Web Tokens).
+5. Offer simulation modes for back-testing strategies."""  # noqa: E501
+    context_content_authentication = """### 1. Development Environment
 
-## Environment Information
-- **Framework**: Express.js (Version 4.x)
-- **Runtime**: Node.js (Version 14.x)
-- **Authentication Library**: jsonwebtoken (Version 8.x)
-- **Database**: MongoDB (Version 4.x) with Mongoose ORM
-- **Version Control**: Git (branch: `auth-middleware`)
-- **Testing Framework**: Jest (Version 26.x)
+- **Operating System**: macOS Big Sur
+- **Development Tools**: Visual Studio Code, Postman
+- **Version Control**: Git, GitHub
+- **Programming Language**: JavaScript
+- **Runtime Environment**: Node.js v16.13.0 (LTS)
+- **Package Manager**: npm
+- **Framework**: Express.js
+- **Database**: MongoDB
 
-## Current Status
-- The basic structure of the Express application is in place with route handlers, models, and controllers.
-- Some routes have been defined, but there's no mechanism to protect the routes that should require authentication.
-- MongoDB is set up and the user schema has been defined in Mongoose.
-- No authentication middleware exists yet, and JWT has not been configured."""  # noqa: E501
+### 2. Testing Environment
+
+- **Testing Framework**: Jest
+- **Assertion Library**: Built into Jest
+- **End-to-End Testing**: Cypress
+- **Load Testing**: Artillery
+- **Continuous Integration**: GitHub Actions
+
+### 3. Production Environment
+
+- **Server**: AWS EC2 t4g.micro instance
+- **Container Orchestration**: AWS ECS with Docker
+- **CI/CD**: GitHub Actions
+- **Logging Management**: ELK Stack
+- **Monitoring**: AWS CloudWatch
+- **Error Tracking**: Sentry
+- **Security**: HTTPS via AWS Certificate Manager, Hashing and salting passwords using bcrypt
+- **CDN**: AWS CloudFront
+
+### 4. Configuration and Security
+
+#### a. Authentication Middleware Configuration
+
+- **Authentication Middleware**: Passport.js with JWT strategy
+- **Environment Variable Management**: `.env` files with the `dotenv` package
+- **Password Protection**: bcrypt for hashing and salting
+
+#### b. Database Configuration
+
+- **Database Engine**: Mongoose ODM for MongoDB
+- **Connection Pooling**: Managed through MongoDB Atlas
+- **ORM**: Mongoose
+
+#### c. API Configuration
+
+- **API Design**: RESTful API
+- **Authentication**: JWT (JSON Web Tokens) using Passport.js
+- **CORS**: Limited to a specific, trusted domain
+
+### 5. Code and Architecture Best Practices
+
+- **Architecture Pattern**: MVC (Model-View-Controller)
+- **Linter**: ESLint
+- **Formatter**: Prettier
+- **Code Review**: Utilize GitHub's pull request review functionality
+- **Testing**: Jest for unit testing, Cypress for E2E testing
+
+### 6. Documentation and Support
+
+- **Documentation**: API documentation created with Swagger
+- **Code Documentation**: JSDoc
+- **README**: Detailed project setup and usage guide on GitHub"""  # noqa: E501
+    context_content_supply_chain = """### Environmental State Information
+1. **Inventory Information**
+   - Warehouse A: 1500 units of Product X, 1000 units of Product Y
+   - Warehouse B: 500 units of Product X, 1800 units of Product Y
+   - In-Transit Inventory: 200 units of Product X, en route from Supplier A, expected to reach Warehouse A in 7 days
+
+2. **Order Information**
+   - Customer 1: Requests delivery of 200 units of Product X and 300 units of Product Y within 10 days
+   - Customer 2: Requests delivery of 150 units of Product X within 15 days
+
+3. **Production Status**
+   - Production Line 1: Currently producing Product X, daily capacity is 100 units, with 50 units of work-in-process
+   - Production Line 2: Currently producing Product Y, daily capacity is 150 units, with 30 units of work-in-process
+
+4. **Logistics Information**
+   - Transport Path 1 (Warehouse A to Customer 1): Estimated transit time of 3 days, transport cost of $2/unit
+   - Transport Path 2 (Warehouse B to Customer 2): Estimated transit time of 5 days, transport cost of $1.5/unit
+
+5. **Market Information**
+   - Market demand for Product X: Average 1500 units per month, expected to increase by 10% next month
+   - Market demand for Product Y: Average 2000 units per month, expected to decrease by 5% next month
+
+6. **Supply Information**
+   - Supplier A: Provides raw materials for Product X, delivery cycle is 14 days, cost is $5/unit
+   - Supplier B: Provides raw materials for Product Y, delivery cycle is 10 days, cost is $4/unit
+
+7. **Supplier Contact Information**
+   - **Supplier A**:
+      - Contact Person: John Doe
+      - Phone: +123-456-7890
+      - Email: [john.doe@supplierA.com](mailto:john.doe@supplierA.com)
+      - Address: 123 Main St, CityA, CountryA
+   - **Supplier B**:
+      - Contact Person: Jane Smith
+      - Phone: +987-654-3210
+      - Email: [jane.smith@supplierB.com](mailto:jane.smith@supplierB.com)
+      - Address: 456 Elm St, CityB, CountryB"""  # noqa: E501
+    context_content_list = [
+        context_content_trading_bot, context_content_authentication,
+        context_content_supply_chain
     ]
-    index = 1
+
+    index = 2
     main(task_prompt=task_prompt_list[index],
          context_text=context_content_list[index])
