@@ -58,11 +58,12 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
                                                        role_names=role_names)
 
     # Split the original task into subtasks
+    num_subtasks = 8
     subtasks_with_dependencies_dict = \
         role_assignment_agent.split_tasks(
             task_prompt=task_prompt,
             role_descriptions_dict=role_descriptions_dict,
-            context_text=context_text)
+            num_subtasks=num_subtasks, context_text=context_text)
 
     print(Fore.BLUE + "Dependencies among subtasks: " +
           json.dumps(subtasks_with_dependencies_dict, indent=4))
@@ -224,7 +225,6 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
             # print_text_animated(Fore.GREEN +
             #                     f"AI Assistant: {ai_assistant_role}\n\n" +
             #                     f"{assistant_response.msg.content}\n")
-            print_text_animated()
             print(Fore.BLUE + f"AI User: {ai_user_role}\n\n" +
                   f"{user_response.msg.content}\n")
             print_and_write_md(
@@ -301,16 +301,16 @@ def print_and_write_md(text, color=Fore.RESET):
 
 
 if __name__ == "__main__":
-    taks_prompt_trading_bot = "Develop a trading bot for the stock market."
-    taks_prompt_authentication = \
+    task_prompt_trading_bot = "Develop a trading bot for the stock market."
+    task_prompt_authentication = \
         "Implementing Authentication Middleware in a Node.js Application."
-    taks_prompt_supply_chain = """Ensure All Customer Orders Are Fulfilled Within the Stipulated Time Frame While Minimizing Total Operational Costs:
+    task_prompt_supply_chain = """Ensure All Customer Orders Are Fulfilled Within the Stipulated Time Frame While Minimizing Total Operational Costs:
     - Ensure 200 units of Product X and 300 units of Product Y are delivered to Customer 1 within 10 days.
     - Ensure 150 units of Product X are delivered to Customer 2 within 15 days."""  # noqa: E501
-
+    task_prompt_ISO = "Research and understand the OSI model and its application to IoT and smart city projects."
     task_prompt_list = [
-        taks_prompt_trading_bot, taks_prompt_authentication,
-        taks_prompt_supply_chain
+        task_prompt_trading_bot, task_prompt_authentication,
+        task_prompt_supply_chain, task_prompt_ISO
     ]
 
     context_content_trading_bot = """### **Enterprise Overview:**
@@ -435,11 +435,56 @@ The new trading bot should be able to:
       - Phone: +987-654-3210
       - Email: [jane.smith@supplierB.com](mailto:jane.smith@supplierB.com)
       - Address: 456 Elm St, CityB, CountryB"""  # noqa: E501
+    context_content_OSI = """**The OSI Model**:
+
+The Open Systems Interconnection (OSI) model is a conceptual framework used to understand how different networking protocols interact across network segments. It's divided into seven layers:
+
+1. **Physical Layer**: Deals with the physical connection between devices – this involves hardware elements like switches, hubs, and Ethernet cables.
+   
+2. **Data Link Layer**: Responsible for creating a reliable link between two directly connected nodes. It also addresses error detection and correction.
+   
+3. **Network Layer**: Manages device addressing, tracks the location of devices on the network, and determines the best way to move data.
+   
+4. **Transport Layer**: Ensures data transfer is reliable and involves error correction before re-transmission.
+   
+5. **Session Layer**: Manages sessions or connections between applications on different devices.
+   
+6. **Presentation Layer**: Translates data between the application and the transport layers, ensuring data is in a readable format.
+   
+7. **Application Layer**: This is where the end-user and the application interface with the network.
+
+**IoT and Smart City Applications**:
+
+IoT (Internet of Things) refers to the interconnection of everyday devices, allowing them to send and receive data. In smart cities, the application of IoT is extensive:
+
+1. **Smart Grids**: Electric grids that use data from smart sensors to optimize energy distribution, thereby improving efficiency and reducing energy costs.
+
+2. **Smart Traffic Management**: Uses IoT sensors and AI to analyze traffic patterns and optimize traffic light sequences, helping reduce congestion and improving transportation efficiency.
+
+3. **Waste Management**: Smart bins equipped with sensors notify waste management companies when they are full, optimizing pickup routes and schedules.
+
+4. **Environmental Monitoring**: IoT devices can monitor air and water quality in real-time, providing data to mitigate pollution and ensuring public health.
+
+5. **Public Safety**: Smart surveillance systems can detect suspicious activities, and smart lighting can adjust based on the time of day or detected motion.
+
+**Relevance of OSI in IoT and Smart City Applications**:
+
+The seamless operation of IoT devices in a smart city environment is contingent on smooth communication between devices, which is where the OSI model plays a pivotal role:
+
+1. **Layered Approach**: IoT devices, depending on their functionalities, might operate at different layers of the OSI model. For example, a smart sensor (like a temperature sensor) might operate at the physical layer, while a smart traffic management system could involve processes up to the application layer.
+
+2. **Interoperability**: Given the diverse range of IoT devices from various manufacturers, using the OSI model ensures that they can all communicate effectively within the network.
+
+3. **Security**: With the rise in IoT devices, especially in a densely interconnected environment like a smart city, each layer of the OSI model needs robust security protocols to prevent breaches.
+
+4. **Optimization**: Understanding the OSI model can help city planners and IT specialists pinpoint where potential network bottlenecks might occur, ensuring that data flows smoothly and efficiently across the city's IoT network.
+
+In essence, the OSI model provides a foundational understanding for how data is transmitted across networks. This understanding is paramount when integrating a vast array of IoT devices in a smart city, ensuring that the city's digital infrastructure is efficient, secure, and adaptive."""  # noqa: E501
     context_content_list = [
         context_content_trading_bot, context_content_authentication,
-        context_content_supply_chain
+        context_content_supply_chain, context_content_OSI
     ]
 
-    index = 2
+    index = 3
     main(task_prompt=task_prompt_list[index],
          context_text=context_content_list[index])
