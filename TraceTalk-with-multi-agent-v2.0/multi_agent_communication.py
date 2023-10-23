@@ -15,15 +15,16 @@ import json
 
 from colorama import Fore
 
+from camel.agents.deductive_reasoner_agent import DeductiveReasonerAgent
 from camel.agents.insight_agent import InsightAgent
 from camel.agents.role_assignment_agent import RoleAssignmentAgent
 from camel.configs import ChatGPTConfig
 from camel.societies import RolePlaying
 from camel.typing import ModelType, TaskType
-from camel.utils import print_text_animated
 
 
-def main(model_type=None, task_prompt=None, context_text=None) -> None:
+def main(model_type=ModelType.GPT_3_5_TURBO_16K, task_prompt=None,
+         context_text=None) -> None:
     print(Fore.WHITE + "==========================================")
     print_and_write_md("==========================================",
                        color=Fore.WHITE)
@@ -46,9 +47,11 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
 
     model_config_description = ChatGPTConfig()
     role_assignment_agent = RoleAssignmentAgent(
-        model=None, model_config=model_config_description)
-    insight_agent = InsightAgent(model=ModelType.GPT_3_5_TURBO_16K,
+        model=model_type, model_config=model_config_description)
+    insight_agent = InsightAgent(model=ModelType.model_type,
                                  model_config=model_config_description)
+    deductive_reasoner_agent = DeductiveReasonerAgent(
+        model=ModelType.model_type, model_config=model_config_description)
 
     # Generate role with descriptions
     role_names = None
@@ -58,12 +61,12 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
                                                        role_names=role_names)
 
     # Split the original task into subtasks
-    num_subtasks = 8
     subtasks_with_dependencies_dict = \
         role_assignment_agent.split_tasks(
             task_prompt=task_prompt,
             role_descriptions_dict=role_descriptions_dict,
-            num_subtasks=num_subtasks, context_text=context_text)
+            num_subtasks=2,
+            context_text=context_text)
 
     print(Fore.BLUE + "Dependencies among subtasks: " +
           json.dumps(subtasks_with_dependencies_dict, indent=4))
@@ -84,6 +87,7 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
         ID_subtask: ""
         for ID_subtask in subtasks_with_dependencies_dict.keys()
     }
+    environment_record = {}
 
     print(Fore.GREEN +
           f"List of {len(role_descriptions_dict)} roles with description:")
@@ -127,9 +131,37 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
                 "====== CURRENT STATE =====\n" + \
                 "The snapshot and the context of the TASK is presentd in " + \
                 "the following insights which is close related to The " + \
-                "\"Insctruction\" and the \"Input\":\n" + \
-                "\n".join(insights_subtasks[pre_subtask]
-                          for pre_subtask in ID_pre_subtasks)
+                "\"Insctruction\" and the \"Input\":\n"
+            labels_sets = [
+                list(labels_set) for labels_set in environment_record.keys()
+            ]
+            conditions_and_quality_json = \
+                deductive_reasoner_agent.deduce_conditions_and_quality(
+                    starting_state="None",
+                    target_state=one_subtask)
+            target_labels = conditions_and_quality_json["labels"]
+
+            _, _, _, labels_retrieved_sets = \
+                role_assignment_agent.get_retrieval_index_from_environment(
+                    labels_sets=labels_sets,
+                    target_labels=target_labels,
+                    )
+            print(Fore.CYAN + "Retrieved labels from the environment:\n" +
+                  f"{labels_retrieved_sets}")
+            print_and_write_md(
+                "Retrieved labels from the environment:\n" +
+                f"{labels_retrieved_sets}", color=Fore.CYAN)
+            retrieved_insights = [
+                environment_record[tuple(label_set)]
+                for label_set in labels_retrieved_sets
+            ]
+            insights_pre_subtask += "\n".join(
+                [str(insight) for insight in retrieved_insights])
+            print(Fore.CYAN + "Retrieved insights from the environment:\n" +
+                  f"{insights_pre_subtask}")
+            print_and_write_md(
+                "Retrieved insights from the environment:\n" +
+                f"{insights_pre_subtask}", color=Fore.CYAN)
         else:
             insights_none_pre_subtask = insight_agent.run(
                 context_text=context_text)
@@ -225,6 +257,7 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
             # print_text_animated(Fore.GREEN +
             #                     f"AI Assistant: {ai_assistant_role}\n\n" +
             #                     f"{assistant_response.msg.content}\n")
+            # print_text_animated()
             print(Fore.BLUE + f"AI User: {ai_user_role}\n\n" +
                   f"{user_response.msg.content}\n")
             print_and_write_md(
@@ -241,21 +274,32 @@ def main(model_type=None, task_prompt=None, context_text=None) -> None:
 
             # Generate the insights from the chat history
             chat_history_assistant += (f"===== [{n}] ===== \n"
-                                       f"{user_response.msg.content}\n"
                                        f"{assistant_response.msg.content}\n")
 
             input_assistant_msg = assistant_response.msg
 
-        # TODO: Generate insights from the chat history
-        # insights_instruction = ("The CONTEXT TEXT is related to code " +
-        #                         "implementation. Pay attention to the " +
-        #                         "code structure code environment.")
-        insights = insight_agent.run(context_text=chat_history_assistant)
+        insights_instruction = ("The CONTEXT TEXT is the chat history of " +
+                                f"{ai_user_role} and {ai_assistant_role}. " +
+                                "The INSIGHTs should come solely from the " +
+                                "content of the conversation, not the " +
+                                "conversation itsel.")
+        insights = insight_agent.run(context_text=chat_history_assistant,
+                                     insights_instruction=insights_instruction)
+        print(Fore.CYAN + "Insights from the chat history:\n" +
+              f"{json.dumps(insights, indent=4)}")
+        print_and_write_md(
+            "Insights from the chat history:\n" +
+            f"{json.dumps(insights, indent=4)}", color=Fore.CYAN)
         insights_str = insight_agent.convert_json_to_str(insights)
         insights_subtasks[ID_one_subtask] = insights_str
+        for insight in insights.values():
+            if insight["entity_recognition"] is None:
+                continue
+            labels_key = tuple(insight["entity_recognition"])
+            environment_record[labels_key] = insight
 
 
-def print_and_write_md(text, color=Fore.RESET):
+def print_and_write_md(text="", color=Fore.RESET):
     import html
     import re
 
@@ -307,10 +351,10 @@ if __name__ == "__main__":
     task_prompt_supply_chain = """Ensure All Customer Orders Are Fulfilled Within the Stipulated Time Frame While Minimizing Total Operational Costs:
     - Ensure 200 units of Product X and 300 units of Product Y are delivered to Customer 1 within 10 days.
     - Ensure 150 units of Product X are delivered to Customer 2 within 15 days."""  # noqa: E501
-    task_prompt_ISO = "Research and understand the OSI model and its application to IoT and smart city projects."
+
     task_prompt_list = [
         task_prompt_trading_bot, task_prompt_authentication,
-        task_prompt_supply_chain, task_prompt_ISO
+        task_prompt_supply_chain
     ]
 
     context_content_trading_bot = """### **Enterprise Overview:**
@@ -435,56 +479,11 @@ The new trading bot should be able to:
       - Phone: +987-654-3210
       - Email: [jane.smith@supplierB.com](mailto:jane.smith@supplierB.com)
       - Address: 456 Elm St, CityB, CountryB"""  # noqa: E501
-    context_content_OSI = """**The OSI Model**:
-
-The Open Systems Interconnection (OSI) model is a conceptual framework used to understand how different networking protocols interact across network segments. It's divided into seven layers:
-
-1. **Physical Layer**: Deals with the physical connection between devices – this involves hardware elements like switches, hubs, and Ethernet cables.
-   
-2. **Data Link Layer**: Responsible for creating a reliable link between two directly connected nodes. It also addresses error detection and correction.
-   
-3. **Network Layer**: Manages device addressing, tracks the location of devices on the network, and determines the best way to move data.
-   
-4. **Transport Layer**: Ensures data transfer is reliable and involves error correction before re-transmission.
-   
-5. **Session Layer**: Manages sessions or connections between applications on different devices.
-   
-6. **Presentation Layer**: Translates data between the application and the transport layers, ensuring data is in a readable format.
-   
-7. **Application Layer**: This is where the end-user and the application interface with the network.
-
-**IoT and Smart City Applications**:
-
-IoT (Internet of Things) refers to the interconnection of everyday devices, allowing them to send and receive data. In smart cities, the application of IoT is extensive:
-
-1. **Smart Grids**: Electric grids that use data from smart sensors to optimize energy distribution, thereby improving efficiency and reducing energy costs.
-
-2. **Smart Traffic Management**: Uses IoT sensors and AI to analyze traffic patterns and optimize traffic light sequences, helping reduce congestion and improving transportation efficiency.
-
-3. **Waste Management**: Smart bins equipped with sensors notify waste management companies when they are full, optimizing pickup routes and schedules.
-
-4. **Environmental Monitoring**: IoT devices can monitor air and water quality in real-time, providing data to mitigate pollution and ensuring public health.
-
-5. **Public Safety**: Smart surveillance systems can detect suspicious activities, and smart lighting can adjust based on the time of day or detected motion.
-
-**Relevance of OSI in IoT and Smart City Applications**:
-
-The seamless operation of IoT devices in a smart city environment is contingent on smooth communication between devices, which is where the OSI model plays a pivotal role:
-
-1. **Layered Approach**: IoT devices, depending on their functionalities, might operate at different layers of the OSI model. For example, a smart sensor (like a temperature sensor) might operate at the physical layer, while a smart traffic management system could involve processes up to the application layer.
-
-2. **Interoperability**: Given the diverse range of IoT devices from various manufacturers, using the OSI model ensures that they can all communicate effectively within the network.
-
-3. **Security**: With the rise in IoT devices, especially in a densely interconnected environment like a smart city, each layer of the OSI model needs robust security protocols to prevent breaches.
-
-4. **Optimization**: Understanding the OSI model can help city planners and IT specialists pinpoint where potential network bottlenecks might occur, ensuring that data flows smoothly and efficiently across the city's IoT network.
-
-In essence, the OSI model provides a foundational understanding for how data is transmitted across networks. This understanding is paramount when integrating a vast array of IoT devices in a smart city, ensuring that the city's digital infrastructure is efficient, secure, and adaptive."""  # noqa: E501
     context_content_list = [
         context_content_trading_bot, context_content_authentication,
-        context_content_supply_chain, context_content_OSI
+        context_content_supply_chain
     ]
 
-    index = 3
+    index = 2
     main(task_prompt=task_prompt_list[index],
          context_text=context_content_list[index])
