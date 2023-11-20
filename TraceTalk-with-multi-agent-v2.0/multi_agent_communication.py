@@ -23,7 +23,7 @@ from camel.societies import RolePlaying
 from camel.types import ModelType, TaskType
 
 
-def main(model_type=ModelType.GPT_3_5_TURBO_16K, task_prompt=None,
+def main(model_type=ModelType.GPT_4, task_prompt=None,
          context_text=None) -> None:
     # Start the multi-agent communication
     print_and_write_md("=========================================",
@@ -58,7 +58,7 @@ def main(model_type=ModelType.GPT_3_5_TURBO_16K, task_prompt=None,
         role_assignment_agent.split_tasks(
             task_prompt=task_prompt,
             role_descriptions_dict=role_descriptions_dict,
-            num_subtasks=1,
+            num_subtasks=None,
             context_text=context_text)
     oriented_graph = {}
     for subtask_idx, details in subtasks_with_dependencies_dict.items():
@@ -97,9 +97,9 @@ def main(model_type=ModelType.GPT_3_5_TURBO_16K, task_prompt=None,
     for idx, subtask_group in enumerate(parallel_subtask_pipelines, 1):
         print_and_write_md(f"Pipeline {idx}: {', '.join(subtask_group)}",
                            color=Fore.YELLOW)
-    print_and_write_md(
-        "Dependencies among subtasks: " +
-        json.dumps(subtasks_with_dependencies_dict, indent=4), color=Fore.BLUE)
+    # print_and_write_md(
+    #     "Dependencies among subtasks: " +
+    #     json.dumps(subtasks_with_dependencies_dict, indent=4), color=Fore.BLUE)
     print_and_write_md("=========================================",
                        color=Fore.WHITE)
 
@@ -245,13 +245,13 @@ def main(model_type=ModelType.GPT_3_5_TURBO_16K, task_prompt=None,
                 continue
             labels_key = tuple(insight["entity_recognition"])
             environment_record[labels_key] = insight
-        printable_environment_record = \
-            {str(label_tuple): insight_data
-             for label_tuple, insight_data in environment_record.items()}
-        print_and_write_md(
-            "Environment record:\n" +
-            f"{json.dumps(printable_environment_record, indent=4)}",
-            color=Fore.CYAN)
+        # printable_environment_record = \
+        #     {str(label_tuple): insight_data
+        #      for label_tuple, insight_data in environment_record.items()}
+        # # print_and_write_md(
+        #     "Environment record:\n" +
+        #     f"{json.dumps(printable_environment_record, indent=4)}",
+        #     color=Fore.CYAN)
 
 
 def get_insights(ID_pre_subtasks, environment_record, deductive_reasoner_agent,
@@ -359,17 +359,19 @@ if __name__ == "__main__":
         "task_prompt_trading_bot.txt", "task_prompt_authentication.txt",
         "task_prompt_supply_chain.txt",
         "task_prompt_endpoint_implementation.txt",
-        "task_prompt_science_fiction.txt"
+        "task_prompt_science_fiction.txt",
+        "task_prompt_experiment.txt",
     ]
     file_names_context = [
         "context_content_trading_bot.txt",
         "context_content_authentication.txt",
         "context_content_supply_chain.txt",
         "context_content_endpoint_implementation.txt",
-        "context_content_science_fiction.txt"
+        "context_content_science_fiction.txt",
+        "context_content_experiment.txt",
     ]
 
-    index = 0
+    index = -1
     with open(root_path + file_names_task_prompt[index], mode='r',
               encoding="utf-8") as file:
         task_prompt = file.read()
