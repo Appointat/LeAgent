@@ -23,30 +23,30 @@ from camel.societies import RolePlaying
 from camel.types import ModelType, TaskType
 
 
-def main(model_type=ModelType.GPT_4, task_prompt=None,
+def main(model_type=ModelType.GPT_4_TURBO, task_prompt=None,
          context_text=None) -> None:
     # Start the multi-agent communication
-    print_and_write_md("=========================================",
+    print_and_write_md("========================================",
                        color=Fore.WHITE)
     print_and_write_md("Welcome to CAMEL-AI Society!", color=Fore.RED)
-    print_and_write_md("================== TASK ==================",
+    print_and_write_md("================ INPUT TASK ================",
                        color=Fore.WHITE)
     print_and_write_md(f"Original task prompt:\n{task_prompt}\n",
                        color=Fore.YELLOW)
-    print_and_write_md("================ CONTEXT ================",
+    print_and_write_md("============== INPUT CONTEXT ==============",
                        color=Fore.WHITE)
     print_and_write_md(f"Context text:\n{context_text}\n", color=Fore.YELLOW)
-    print_and_write_md("=========================================",
+    print_and_write_md("========================================",
                        color=Fore.WHITE)
 
     # Model and agent initialization
     model_config_description = ChatGPTConfig()
     role_assignment_agent = RoleAssignmentAgent(
-        model=model_type, model_config=model_config_description)
-    insight_agent = InsightAgent(model=model_type,
+        model_type=model_type, model_config=model_config_description)
+    insight_agent = InsightAgent(model_type=model_type,
                                  model_config=model_config_description)
     deductive_reasoner_agent = DeductiveReasonerAgent(
-        model=model_type, model_config=model_config_description)
+        model_type=model_type, model_config=model_config_description)
 
     # Generate role with descriptions
     role_descriptions_dict = \
@@ -58,7 +58,7 @@ def main(model_type=ModelType.GPT_4, task_prompt=None,
         role_assignment_agent.split_tasks(
             task_prompt=task_prompt,
             role_descriptions_dict=role_descriptions_dict,
-            num_subtasks=None,
+            num_subtasks=6,
             context_text=context_text)
     oriented_graph = {}
     for subtask_idx, details in subtasks_with_dependencies_dict.items():
@@ -81,6 +81,13 @@ def main(model_type=ModelType.GPT_4, task_prompt=None,
         for ID_subtask in subtasks_with_dependencies_dict.keys()
     }
     environment_record = {}
+    if context_text is not None:
+        insights = insight_agent.run(context_text=context_text)
+        for insight in insights.values():
+            if insight["entity_recognition"] is None:
+                continue
+            labels_key = tuple(insight["entity_recognition"])
+            environment_record[labels_key] = insight
 
     # Print the information of the task, the subtasks and the roles with
     # descriptions
@@ -97,10 +104,11 @@ def main(model_type=ModelType.GPT_4, task_prompt=None,
     for idx, subtask_group in enumerate(parallel_subtask_pipelines, 1):
         print_and_write_md(f"Pipeline {idx}: {', '.join(subtask_group)}",
                            color=Fore.YELLOW)
-    # print_and_write_md(
-    #     "Dependencies among subtasks: " +
-    #     json.dumps(subtasks_with_dependencies_dict, indent=4), color=Fore.BLUE)
-    print_and_write_md("=========================================",
+    print_and_write_md(
+        "Dependencies among subtasks: " +
+        json.dumps(subtasks_with_dependencies_dict, indent=4), color=Fore.BLUE,
+        MD_FILE="dependencies among subtasks")
+    print_and_write_md("========================================",
                        color=Fore.WHITE)
 
     # Resolve the subtasks in sequence based on the dependency graph
@@ -109,13 +117,15 @@ def main(model_type=ModelType.GPT_4, task_prompt=None,
         # Get the description of the subtask
         one_subtask = \
             subtasks_with_dependencies_dict[ID_one_subtask]["description"]
+        one_subtask_tags = \
+            subtasks_with_dependencies_dict[ID_one_subtask]["input_tags"]
         # Get the insights from the chat history of based on the dependencies
-        ID_pre_subtasks = \
+        pre_subtasks = \
             subtasks_with_dependencies_dict[ID_one_subtask]["dependencies"]
 
         insights_pre_subtask = \
-            get_insights(ID_pre_subtasks, environment_record,
-                         deductive_reasoner_agent, one_subtask,
+            get_insights(pre_subtasks, one_subtask, one_subtask_tags,
+                         environment_record, deductive_reasoner_agent,
                          role_assignment_agent, insight_agent, context_text)
 
         # Get the role with the highest compatibility score
@@ -156,12 +166,13 @@ def main(model_type=ModelType.GPT_4, task_prompt=None,
             for _ in range(2)
         ]
 
-        task_with_IO = "- Description of TASK:\n" + \
-            subtasks_with_dependencies_dict[ID_one_subtask]["description"] + \
-            "\n- Input of TASK:\n" + \
-            subtasks_with_dependencies_dict[ID_one_subtask]["input"] + \
-            "\n- Output Standard for the completion of TASK:\n" + \
-            subtasks_with_dependencies_dict[ID_one_subtask]["output_standard"]
+        task_with_IO = (
+            "- Description of TASK:\n" +
+            subtasks_with_dependencies_dict[ID_one_subtask]["description"] +
+            "\n- Input of TASK:\n" +
+            subtasks_with_dependencies_dict[ID_one_subtask]["input_content"] +
+            "\n- Output Standard for the completion of TASK:\n" +
+            subtasks_with_dependencies_dict[ID_one_subtask]["output_standard"])
         role_play_session = RolePlaying(
             assistant_role_name=ai_assistant_role,
             user_role_name=ai_user_role,
@@ -183,7 +194,7 @@ def main(model_type=ModelType.GPT_4, task_prompt=None,
         while n < chat_turn_limit:
             n += 1
             assistant_response, user_response = role_play_session.step(
-                input_assistant_msg)
+                input_assistant_msg) # call API to get the response
 
             print_and_write_md(
                 f"AI User: {ai_user_role}\n\n" +
@@ -245,34 +256,35 @@ def main(model_type=ModelType.GPT_4, task_prompt=None,
                 continue
             labels_key = tuple(insight["entity_recognition"])
             environment_record[labels_key] = insight
-        # printable_environment_record = \
-        #     {str(label_tuple): insight_data
-        #      for label_tuple, insight_data in environment_record.items()}
-        # # print_and_write_md(
-        #     "Environment record:\n" +
-        #     f"{json.dumps(printable_environment_record, indent=4)}",
-        #     color=Fore.CYAN)
+        printable_environment_record = \
+            {str(label_tuple): insight_data
+             for label_tuple, insight_data in environment_record.items()}
+        print_and_write_md(
+            "Environment record:\n" +
+            f"{json.dumps(printable_environment_record, indent=4)}",
+            color=Fore.CYAN, MD_FILE=f"environment record of {ID_one_subtask}")
 
 
-def get_insights(ID_pre_subtasks, environment_record, deductive_reasoner_agent,
-                 one_subtask, role_assignment_agent, insight_agent,
-                 context_text):
+def get_insights(pre_subtasks, one_subtask, one_subtask_tags,
+                 environment_record, deductive_reasoner_agent,
+                 role_assignment_agent, insight_agent, context_text):
     # React to the environment, and get the insights from it
-    if ID_pre_subtasks is not None and len(ID_pre_subtasks) != 0:
-        insights_pre_subtask = "\n" + \
-            "====== CURRENT STATE =====\n" + \
-            "The snapshot and the context of the TASK is presentd in " + \
-            "the following insights which is close related to The " + \
-            "\"Insctruction\" and the \"Input\":\n"
-        labels_sets = [
-            list(labels_set) for labels_set in environment_record.keys()
-        ]
+    if pre_subtasks is not None and len(pre_subtasks) != 0:
         conditions_and_quality_json = \
             deductive_reasoner_agent.deduce_conditions_and_quality(
                 starting_state="None",
                 target_state=one_subtask)
-        target_labels = conditions_and_quality_json["labels"]
 
+        def merge_lists(a, b):
+            # Union of two lists without duplicates
+            return list(set(a) | set(b))
+
+        target_labels = merge_lists(conditions_and_quality_json["labels"],
+                                    one_subtask_tags)
+
+        labels_sets = [
+            list(labels_set) for labels_set in environment_record.keys()
+        ]
         _, _, _, labels_retrieved_sets = \
             role_assignment_agent.get_retrieval_index_from_environment(
                 labels_sets=labels_sets,
@@ -281,14 +293,39 @@ def get_insights(ID_pre_subtasks, environment_record, deductive_reasoner_agent,
         # TODO: Add the print to UI
         print_and_write_md(
             "Retrieved labels from the environment:\n" +
-            f"{labels_retrieved_sets}", color=Fore.CYAN)
+            f"{labels_retrieved_sets}", color=Fore.CYAN,
+            MD_FILE=f"retrieved labels for {pre_subtasks}")
         retrieved_insights = [
             environment_record[tuple(label_set)]
             for label_set in labels_retrieved_sets
         ]
+
+        insights_pre_subtask = "\n" + \
+            "====== CURRENT STATE =====\n" + \
+            "The snapshot and the context of the TASK is presentd in " + \
+            "the following insights which is close related to The " + \
+            "\"Insctruction\" and the \"Input\":\n"
         insights_pre_subtask += "\n".join(
             [str(insight) for insight in retrieved_insights])
     else:
+        target_labels = one_subtask_tags
+        labels_sets = [
+            list(labels_set) for labels_set in environment_record.keys()
+        ]
+        _, _, _, labels_retrieved_sets = \
+            role_assignment_agent.get_retrieval_index_from_environment(
+                labels_sets=labels_sets,
+                target_labels=target_labels,
+                )
+        print_and_write_md(
+            "Retrieved labels from the environment:\n" +
+            f"{labels_retrieved_sets}", color=Fore.CYAN,
+            MD_FILE=f"retrieved labels for {pre_subtasks}")
+        retrieved_insights = [
+            environment_record[tuple(label_set)]
+            for label_set in labels_retrieved_sets
+        ]
+
         insights_none_pre_subtask = insight_agent.run(
             context_text=context_text)
         insights_pre_subtask = "\n" + \
@@ -297,6 +334,13 @@ def get_insights(ID_pre_subtasks, environment_record, deductive_reasoner_agent,
             "the following insights which is close related to The " + \
             "\"Insctruction\" and the \"Input\":\n" + \
             f"{insights_none_pre_subtask}\n"
+        insights_pre_subtask += "\n".join(
+            [str(insight) for insight in retrieved_insights])
+
+    print_and_write_md(
+        f"Insights from the context text:\n{insights_pre_subtask}",
+        color=Fore.GREEN, MD_FILE="insights from context text"
+        f" of {pre_subtasks}")
     return insights_pre_subtask
 
 
@@ -356,10 +400,12 @@ def print_and_write_md(text="", color=Fore.RESET, MD_FILE=None):
 if __name__ == "__main__":
     root_path = "examples/multi_agent/demo_examples/"
     file_names_task_prompt = [
-        "task_prompt_trading_bot.txt", "task_prompt_authentication.txt",
+        "task_prompt_trading_bot.txt",
+        "task_prompt_authentication.txt",
         "task_prompt_supply_chain.txt",
         "task_prompt_endpoint_implementation.txt",
         "task_prompt_science_fiction.txt",
+        "task_prompt_business_novel.txt",
         "task_prompt_experiment.txt",
     ]
     file_names_context = [
@@ -368,10 +414,11 @@ if __name__ == "__main__":
         "context_content_supply_chain.txt",
         "context_content_endpoint_implementation.txt",
         "context_content_science_fiction.txt",
+        "context_content_business_novel.txt",
         "context_content_experiment.txt",
     ]
 
-    index = -1
+    index = 5
     with open(root_path + file_names_task_prompt[index], mode='r',
               encoding="utf-8") as file:
         task_prompt = file.read()
