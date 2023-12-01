@@ -11,854 +11,424 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
-import re
-from collections import deque
-from typing import Any, Dict, List, Optional, Tuple, Union
+import json, re
 
-import matplotlib.pyplot as plt
-import networkx as nx
+from colorama import Fore
 
-from camel.agents import ChatAgent
+from camel.agents.deductive_reasoner_agent import DeductiveReasonerAgent
 from camel.agents.insight_agent import InsightAgent
+from camel.agents.role_assignment_agent import RoleAssignmentAgent
 from camel.configs import ChatGPTConfig
-from camel.messages import BaseMessage
-from camel.prompts import TextPrompt
-from camel.types import ModelType, RoleType
+from camel.societies import RolePlaying
+from camel.types import ModelType, TaskType
 
 
-class RoleAssignmentAgent(ChatAgent):
-    r"""An agent that generates role names based on the task prompt.
-    Args:
-        model_type (ModelType, optional): The type of model to use for the
-            agent. (default: :obj:`ModelType.GPT_3_5_TURBO`)
-        model_config (Any, optional): The configuration for the model.
-            (default: :obj:`None`)
-    """
+def main(model_type=ModelType.GPT_4_TURBO, task_prompt=None,
+         context_text=None) -> None:
+    # Start the multi-agent communication
+    print_and_write_md("========================================",
+                       color=Fore.WHITE)
+    print_and_write_md("Welcome to CAMEL-AI Society!", color=Fore.RED)
+    print_and_write_md("================ INPUT TASK ================",
+                       color=Fore.WHITE)
+    print_and_write_md(f"Original task prompt:\n{task_prompt}\n",
+                       color=Fore.YELLOW)
+    print_and_write_md("============== INPUT CONTEXT ==============",
+                       color=Fore.WHITE)
+    print_and_write_md(f"Context text:\n{context_text}\n", color=Fore.YELLOW)
+    print_and_write_md("========================================",
+                       color=Fore.WHITE)
 
-    def __init__(
-        self,
-        model_type: ModelType = ModelType.GPT_3_5_TURBO,
-        model_config: Optional[Any] = None,
-    ) -> None:
-        system_message = BaseMessage(
-            role_name="Role Assigner",
-            role_type=RoleType.ASSISTANT,
-            meta_dict=None,
-            content="You assign roles based on tasks.",
+    # Model and agent initialization
+    model_config_description = ChatGPTConfig()
+    role_assignment_agent = RoleAssignmentAgent(
+        model_type=model_type, model_config=model_config_description)
+    insight_agent = InsightAgent(model_type=model_type,
+                                 model_config=model_config_description)
+    deductive_reasoner_agent = DeductiveReasonerAgent(
+        model_type=model_type, model_config=model_config_description)
+
+    # Generate role with descriptions
+    role_descriptions_dict = \
+        role_assignment_agent.run_role_with_description(
+            task_prompt=task_prompt, num_roles=4, role_names=None)
+
+    # Split the original task into subtasks
+    subtasks_with_dependencies_dict = \
+        role_assignment_agent.split_tasks(
+            task_prompt=task_prompt,
+            role_descriptions_dict=role_descriptions_dict,
+            num_subtasks=None,
+            context_text=context_text)
+    oriented_graph = {}
+    for subtask_idx, details in subtasks_with_dependencies_dict.items():
+        deps = details["dependencies"]
+        oriented_graph[subtask_idx] = deps
+    role_assignment_agent.draw_subtasks_graph(oriented_graph=oriented_graph)
+
+    subtasks = [
+        subtasks_with_dependencies_dict[key]["description"]
+        for key in sorted(subtasks_with_dependencies_dict.keys())
+    ]
+
+    parallel_subtask_pipelines = \
+        role_assignment_agent.get_task_execution_order(
+            subtasks_with_dependencies_dict)
+
+    # Record the insights from chat history of the assistant
+    insights_subtasks = {
+        ID_subtask: ""
+        for ID_subtask in subtasks_with_dependencies_dict.keys()
+    }
+    environment_record = {}
+    if context_text is not None:
+        insights = insight_agent.run(context_text=context_text)
+        for insight in insights.values():
+            if insight["entity_recognition"] is None:
+                continue
+            labels_key = tuple(insight["entity_recognition"])
+            environment_record[labels_key] = insight
+
+    # Print the information of the task, the subtasks and the roles with
+    # descriptions
+    print_and_write_md(
+        f"List of {len(role_descriptions_dict)} roles with description:",
+        color=Fore.GREEN)
+    for role_name in role_descriptions_dict.keys():
+        print_and_write_md(
+            f"{role_name}:\n" + f"{role_descriptions_dict[role_name]}\n",
+            color=Fore.BLUE)
+    print_and_write_md(f"List of {len(subtasks)} subtasks:", color=Fore.YELLOW)
+    for i, subtask in enumerate(subtasks):
+        print_and_write_md(f"Subtask {i + 1}:\n{subtask}", color=Fore.YELLOW)
+    for idx, subtask_group in enumerate(parallel_subtask_pipelines, 1):
+        print_and_write_md(f"Pipeline {idx}: {', '.join(subtask_group)}",
+                           color=Fore.YELLOW)
+    print_and_write_md(
+        "Dependencies among subtasks: " +
+        json.dumps(subtasks_with_dependencies_dict, indent=4), color=Fore.BLUE,
+        MD_FILE="dependencies among subtasks")
+    print_and_write_md("========================================",
+                       color=Fore.WHITE)
+
+    # Resolve the subtasks in sequence based on the dependency graph
+    for ID_one_subtask in (subtask for pipeline in parallel_subtask_pipelines
+                           for subtask in pipeline):
+        # Get the description of the subtask
+        one_subtask = \
+            subtasks_with_dependencies_dict[ID_one_subtask]["description"]
+        one_subtask_tags = \
+            subtasks_with_dependencies_dict[ID_one_subtask]["input_tags"]
+        # Get the insights from the chat history of based on the dependencies
+        pre_subtasks = \
+            subtasks_with_dependencies_dict[ID_one_subtask]["dependencies"]
+
+        insights_pre_subtask = \
+            get_insights(pre_subtasks, one_subtask, one_subtask_tags,
+                         environment_record, deductive_reasoner_agent,
+                         role_assignment_agent, insight_agent, context_text)
+
+        # Get the role with the highest compatibility score
+        role_compatibility_scores_dict = (
+            role_assignment_agent.evaluate_role_compatibility(
+                one_subtask, role_descriptions_dict))
+
+        # Get the top two roles with the highest compatibility scores
+        ai_assistant_role = \
+            max(role_compatibility_scores_dict,
+                key=lambda role:
+                role_compatibility_scores_dict[role]["score_assistant"])
+        ai_user_role = \
+            max(role_compatibility_scores_dict,
+                key=lambda role:
+                role_compatibility_scores_dict[role]["score_user"])
+
+        ai_assistant_description = role_descriptions_dict[ai_assistant_role]
+        ai_user_description = role_descriptions_dict[ai_user_role]
+
+        print_and_write_md("================ SESSION ================",
+                           color=Fore.WHITE)
+        print_and_write_md(f"{ID_one_subtask}: \n{one_subtask}\n",
+                           color=Fore.YELLOW)
+        print_and_write_md(
+            f"AI Assistant Role: {ai_assistant_role}\n" +
+            f"{ai_assistant_description}\n", color=Fore.GREEN)
+        print_and_write_md(
+            f"AI User Role: {ai_user_role}\n" + f"{ai_user_description}\n",
+            color=Fore.BLUE)
+
+        # You can use the following code to play the role-playing game
+        sys_msg_meta_dicts = [
+            dict(
+                assistant_role=ai_assistant_role, user_role=ai_user_role,
+                assistant_description=ai_assistant_description +
+                insights_pre_subtask, user_description=ai_user_description)
+            for _ in range(2)
+        ]
+
+        task_with_IO = (
+            "- Description of TASK:\n" +
+            subtasks_with_dependencies_dict[ID_one_subtask]["description"] +
+            "\n- Input of TASK:\n" +
+            subtasks_with_dependencies_dict[ID_one_subtask]["input_content"] +
+            "\n- Output Standard for the completion of TASK:\n" +
+            subtasks_with_dependencies_dict[ID_one_subtask]["output_standard"])
+        role_play_session = RolePlaying(
+            assistant_role_name=ai_assistant_role,
+            user_role_name=ai_user_role,
+            task_prompt=task_with_IO,
+            model_type=model_type,
+            task_type=TaskType.
+            ROLE_DESCRIPTION,  # Important for role description
+            with_task_specify=False,
+            extend_sys_msg_meta_dicts=sys_msg_meta_dicts,
         )
-        super().__init__(system_message, model_type, model_config)
-        self.model_config = model_config or ChatGPTConfig()
 
-    def run_role_with_description(
-        self,
-        task_prompt: Union[str, TextPrompt],
-        num_roles: int = 2,
-        role_names: Optional[List[str]] = None,
-        role_descriptions_instruction: Optional[Union[str, TextPrompt]] = None,
-    ) -> Dict[str, Dict[str, List[str]]]:
-        r"""Generate role names based on the input task prompt.
+        actions_record = ("The TASK of the context text is:\n" +
+                          f"{one_subtask}\n")
+        chat_history_two_roles = ""
 
-        Args:
-            task_prompt (Union[str, TextPrompt]): The prompt
-                for the task based on which the roles are to be generated.
-            num_roles (int, optional): The number of roles to generate.
-                (default: :obj:`2`)
-            role_names (Optional[List[str]], optional): The names of the roles
-                to generate. (default: :obj:`None`)
-            role_descriptions_instruction (Optional[Union[str, TextPrompt]],
-                optional): The instruction for the role descriptions.
+        # Start the role-playing to complete the subtask
+        chat_turn_limit, n = 50, 0
+        input_assistant_msg, _ = role_play_session.init_chat()
+        while n < chat_turn_limit:
+            n += 1
+            assistant_response, user_response = role_play_session.step(
+                input_assistant_msg)
 
-        Returns:
-            Dict[str, Dict[str, List[str]]]: A dictionary mapping role names
-                to their descriptions and dependencies.
-        """
-        self.reset()
+            print_and_write_md(
+                f"AI User: {ai_user_role}\n\n" +
+                f"{user_response.msg.content}\n", color=Fore.BLUE,
+                MD_FILE=ID_one_subtask)
+            print_and_write_md(
+                f"AI Assistant: {ai_assistant_role}\n\n" +
+                f"{assistant_response.msg.content}\n", color=Fore.GREEN,
+                MD_FILE=ID_one_subtask)
 
-        if num_roles is None:
-            raise ValueError("Number of roles must be provided.")
-        if num_roles < 1:
-            raise ValueError("Number of roles must be greater than 0.")
-        if role_names is not None and len(role_names) != num_roles:
-            raise RuntimeError(
-                "Got None or insufficient information of roles.")
+            # Generate the insights from the chat history
+            action_content = re.findall(r'Action:\s*(.*)',
+                                        assistant_response.msg.content,
+                                        re.DOTALL)
+            actions_record += (f"--- [{n}] ---\n"
+                               f"{action_content}\n")
+            user_conversation = user_response.msg.content
+            assistant_conversation = assistant_response.msg.content.replace(
+                "Solution&Action:\n", "").replace("Next request.",
+                                                  "").strip("\n")
+            transformed_text_with_category = \
+                role_assignment_agent.transform_dialogue_into_text(
+                    user=ai_user_role, assistant=ai_assistant_role,
+                    task_prompt=one_subtask,
+                    user_conversation=user_conversation,
+                    assistant_conversation=assistant_conversation)
+            if "ASSISTANCE" in transformed_text_with_category["categories"]:
+                transformed_text = transformed_text_with_category["text"]
+                chat_history_two_roles += (transformed_text + "\n\n")
 
-        task_prompt = TextPrompt("===== TASK =====\n" + task_prompt + "\n\n")
-        if role_names is None:
-            expert_prompt = "===== ANSWER TEMPLATE =====\n" + "\n".join(
-                f"Domain expert {i + 1}: <BLANK>\n"
-                f"Associated competencies, characteristics, and duties: "
-                f"<BLANK>.\nEnd." for i in range(num_roles)) + "\n\n"
-        else:
-            expert_prompt = "===== ANSWER TEMPLATE =====\n" + "\n".join(
-                f"Domain expert {i + 1}: {role_name}\n"
-                f"Associated competencies, characteristics, and duties: "
-                f"<BLANK>.\nEnd."
-                for i, role_name in enumerate(role_names)) + "\n\n"
-        if role_descriptions_instruction is None:
-            role_descriptions_instruction = ""
-        else:
-            role_descriptions_instruction = "Moreover, " + \
-                role_descriptions_instruction
-        role_assignment_generation_prompt = TextPrompt(
-            "You are a role assignment agent, and you're in charge of " +
-            "recruiting {num_roles} experts, who may have identical roles " +
-            "but different names. Identify the domain experts you'd recruit " +
-            "and detail descriptions, like their associated competencies, " +
-            "characteristics and duties to complete the task. " +
-            role_descriptions_instruction + "\n" +
-            "Your answer MUST strictly adhere to the structure of ANSWER " +
-            "TEMPLATE, ONLY fill in the BLANKs, and DO NOT alter or modify " +
-            "any other part of the template.\n\n" + expert_prompt +
-            task_prompt)
-        role_assignment_generation = role_assignment_generation_prompt.format(
-            num_roles=num_roles, task=task_prompt)
+            if assistant_response.terminated:
+                print(Fore.GREEN +
+                      (f"{ai_assistant_role} terminated. Reason: "
+                       f"{assistant_response.info['termination_reasons']}."))
+                break
+            if user_response.terminated:
+                print(Fore.GREEN + (
+                    f"{ai_user_role} terminated. "
+                    f"Reason: {user_response.info['termination_reasons']}."))
+                break
 
-        role_assignment_generation_msg = BaseMessage.make_user_message(
-            role_name="Role Assigner", content=role_assignment_generation)
+            if "CAMEL_TASK_DONE" in user_response.msg.content:
+                break
 
-        response = self.step(input_message=role_assignment_generation_msg)
+            input_assistant_msg = assistant_response.msg
+        print(f"actions_record of {ID_one_subtask}:\n{actions_record}\n")
 
-        if response.terminated:
-            raise RuntimeError("Role compatibility scoring failed.\n" +
-                               f"Error:\n{response.info}")
-        msg = response.msg  # type: BaseMessage
+        print_and_write_md(
+            f"Output of the {ID_one_subtask}:\n" +
+            f"{chat_history_two_roles}\n", color=Fore.GREEN)
 
-        # Distribute the output completions into role names and descriptions
-        role_names = [
-            desc.replace("<", "").replace(">", "").strip()
-            for desc in re.findall(
-                r"Domain expert \d: (.+?)\nAssociated competencies,",
-                msg.content,
-                re.DOTALL,
-            )
+        insights_instruction = ("The CONTEXT TEXT is the steps to resolve " +
+                                "the TASK. The INSIGHTs should come solely" +
+                                "from the actions/steps.")
+        insights = insight_agent.run(context_text=actions_record,
+                                     insights_instruction=insights_instruction)
+        insights_str = insight_agent.convert_json_to_str(insights)
+        print(f"insights of {ID_one_subtask}:\n{insights_str}\n")
+        insights_subtasks[ID_one_subtask] = insights_str
+        for insight in insights.values():
+            if insight["entity_recognition"] is None:
+                continue
+            labels_key = tuple(insight["entity_recognition"])
+            environment_record[labels_key] = insight
+        printable_environment_record = \
+            {str(label_tuple): insight_data
+             for label_tuple, insight_data in environment_record.items()}
+        print_and_write_md(
+            "Environment record:\n" +
+            f"{json.dumps(printable_environment_record, indent=4)}",
+            color=Fore.CYAN, MD_FILE=f"environment record of {ID_one_subtask}")
+
+
+def get_insights(pre_subtasks, one_subtask, one_subtask_tags,
+                 environment_record, deductive_reasoner_agent,
+                 role_assignment_agent, insight_agent, context_text):
+    # React to the environment, and get the insights from it
+    if pre_subtasks is not None and len(pre_subtasks) != 0:
+        conditions_and_quality_json = \
+            deductive_reasoner_agent.deduce_conditions_and_quality(
+                starting_state="None",
+                target_state=one_subtask)
+
+        def merge_lists(a, b):
+            # Union of two lists without duplicates
+            return list(set(a) | set(b))
+
+        target_labels = merge_lists(conditions_and_quality_json["labels"],
+                                    one_subtask_tags)
+
+        labels_sets = [
+            list(labels_set) for labels_set in environment_record.keys()
         ]
-        role_descriptions = [
-            desc.lstrip('\n').replace("<", "").replace(">", "").strip()
-            for desc in re.findall(
-                r"Associated competencies, characteristics, and duties:"
-                r"(?:\n)?(.+?)\nEnd.", msg.content, re.DOTALL)
-        ]
-
-        if len(role_names) != num_roles or len(role_descriptions) != num_roles:
-            raise RuntimeError(
-                "Got None or insufficient information of roles.")
-        role_descriptions_dict = {
-            role_name: description
-            for role_name, description in zip(role_names, role_descriptions)
-        }
-
-        return role_descriptions_dict
-
-    def split_tasks(
-        self,
-        task_prompt: Union[str, TextPrompt],
-        role_descriptions_dict: Dict[str, str],
-        num_subtasks: Optional[int] = None,
-        context_text: Optional[str] = None,
-    ) -> Dict[str, Dict[str, Union[str, List[str]]]]:
-        r"""Decompose the task into subtasks based on the input task prompt.
-
-        Args:
-            task_prompt (Union[str, TextPrompt]): The prompt for the task
-                based on which the roles are to be generated.
-            role_descriptions_dict (Dict[str, str]): The role descriptions of
-                each role.
-            num_subtasks (Optional[int], optional): The number of subtasks to
-                decompose the task into. (default: :obj:`None`)
-            context_text (Optional[str], optional): The context text to
-                generate insights from. (default: :obj:`None`)
-
-        Returns:
-            Dict[str, Dict[str, Union[str, List[str]]]]: A dictionary mapping
-                subtask names to their descriptions and dependencies.
-        """
-        self.reset()
-
-        role_names = list(role_descriptions_dict.keys())
-
-        split_task_rules_prompt = """You are a task decomposer, and you're in asked to break down the main TASK into {num_subtasks} manageable subtasks suitable for a team comprising {num_roles} domain experts. The experts will contribute to the {num_subtasks} subtasks. Please follow the guidelines below to craft your answer:
-    1. Action-Oriented Foundation & Building Blocks: Ensure each subtask is actionable, distinct, tapping into the expertise of the assigned roles. Recognize that not every subtask needs to directly reflect the main TASK's ultimate aim. Some subtasks serve as essential building blocks, paving the way for more central subtasks, but avoid creating subtasks that are self-dependent or overly foundational.
-    2. Balanced Granularity with a Bias for Action: Details of subtask should be detailed, actionable, and not be ambiguous. Prioritize tangible actions in subtask such as implementation, creation, testing, or other tangible activities over mere understanding.
-    3. Contextual Parameters: Please ensure that each subtask has the relevant context information from the TASK to avoid missing or contradicting the context information of the TASK. And try to provide as much information from CONTEXT TEXT as possible here.
-    3. Dependencies & Gantt Chart: Identify and account for the dependencies within the subtasks. Ensure that each subtask logically flows from one to the next, or can run concurrently where no subtask is dependent on itself, in a manner that could be efficiently represented on a Gantt chart.
-    4. Definitions of the Input of subtask:
-        - Interlinking of Inputs: Ensure that the inputs are not siloed and can be interlinked within privous subtasks if necessary, providing a holistic view of what is required for the subtask.
-        - Hierarchy and Prioritization: Identify and clearly state the priority and hierarchy (if applicable) among the inputs, ensuring the most critical elements are addressed promptly.
-        - Accessibility and Clarity: Ensure that all provided inputs are accessible, clear, and understandable to the relevant team members.
-        - Adjustability: Consider that inputs may need to be adjusted as the project progresses and ensure a mechanism for the same.
-    5. Definitions of the Task Completion Standard in order to implement a feature in the software that can identify and mark a task as completed:
-        - A task is considered completed when its intended output is produced.
-        - If possible, the completion standard should be quantifiable to facilitate automatic detection by the software or tool feature.
-        - The completion standard should be applicable to common project management scenarios and adaptable to various types of tasks, such as development, testing, and review tasks.
-    6. Refrain from mentioning specific titles or roles (who are mentioned in the section of ROLES WITH DESCRIPTION) within the content of subtasks, unless the titles and personal names are mentioned in the TASK.
-Your answer MUST strictly adhere to the structure of ANSWER TEMPLATE, ONLY fill in the BLANKs, and DO NOT alter or modify any other part of the template.\n\n\n"""  # noqa: E501
-
-        # Generate insights from the context text to help decompose the task
-        if context_text is not None:
-            model_config = self.model_config
-            insight_agent = InsightAgent(model_type=self.model_type,
-                                         model_config=model_config)
-            task_insights_json = insight_agent.run(context_text=context_text)
-            task_context_prompt = (
-                "===== CONTEXT TEXT =====\n"
-                "The CONTEXT TEXT is related to TASK and "
-                "Contextual Parameters of subtask. When "
-                "decomposing the task, ensure that each subtask "
-                "incorporates specific details from the "
-                "INSIGHTS of CONTEXT TEXT.\n" +
-                insight_agent.convert_json_to_str(task_insights_json) + "\n\n")
-        else:
-            task_context_prompt = ""
-
-        task_prompt = TextPrompt("===== TASK =====\n" + task_prompt + "\n\n")
-        role_with_description_prompt = \
-            "===== ROLES WITH DESCRIPTION =====\n" + "\n".join(
-                f"{role_name}:\n{role_descriptions_dict[role_name]}\n"
-                for role_name in role_names) + "\n\n"
-        if num_subtasks is None:
-            answer_prompt = (
-                "===== ANSWER TEMPLATE =====\n"
-                "PART I (all subtasks):\n"
-                "Details of subtask <NUM>:\n<BLANK>\n"
-                "Contextual Parameters of subtask <NUM>:\n<BLANK>\n"
-                "Content of the Input of subtask <NUM>:\n<BLANK>\n"
-                "Input tags of subtask <NUM>: [<BLANK>, ..., <BLANK>]/[None] "
-                "(include square brackets)\n"
-                "Task completion standard of subtask <NUM>:\n<BLANK>\n"
-                "Dependency of subtask <NUM>: [subtask <i>, subtask <j>, "
-                "subtask <k>]/[None] (include square brackets).\n"
-                "PART II:\nGantt Chart with complex dependency in MarkDown "
-                "format:\n<BLANK>\n\n\n")
-        else:
-            answer_prompt = "===== ANSWER TEMPLATE =====\n" + \
-                "PART I (all subtasks):\n" + \
-                "\n".join(
-                    f"Details of subtask {i + 1}:\n<BLANK>\n"
-                    f"Contextual Parameters of subtask {i + 1}:\n<BLANK>\n"
-                    f"Content of the Input of subtask {i + 1}:\n<BLANK>\n"
-                    f"Input tags of subtask {i + 1}: [<BLANK>, ..., "
-                    "<BLANK>]/[None] (include square brackets)\n"
-                    f"Task completion standard of subtask {i + 1}:\n<BLANK>\n"
-                    f"Dependency of subtask {i + 1}: [subtask <i>, subtask "
-                    f"<j>, subtask <k>]/[None] (include square brackets)."
-                    for i in range(num_subtasks)) + \
-                "\nPART II:\nGantt Chart with complex dependency in " + \
-                "MarkDown format:\n<BLANK>\n\n\n"
-        split_task_prompt = TextPrompt(split_task_rules_prompt +
-                                       answer_prompt + task_prompt + "\n\n" +
-                                       task_context_prompt +
-                                       role_with_description_prompt)
-        subtasks_generation = split_task_prompt.format(
-            num_subtasks=num_subtasks or "SEVERAL/ENOUGH",
-            num_roles=len(role_names))
-        print(f"subtasks_generation:\n{subtasks_generation}")
-
-        subtasks_generation_msg = BaseMessage.make_user_message(
-            role_name="Task Decomposer", content=subtasks_generation)
-        subtasks_generation_msg.content = "hi"
-
-        response = self.step(input_message=subtasks_generation_msg)
-        response.msg.content = """PART I (all subtasks):
-Details of subtask 1:
-Write Chapter 1: The Genesis of Q* Zero, incorporating insights about Sam Altman's visionary leadership and OpenAI's ambitious project, Q* Zero. Include a portrayal of OpenAI's Palo Alto headquarters with its modern, eco-friendly architecture.
-
-Contextual Parameters of subtask 1:
-Focus on Sam Altman's role as CEO, his decision-making and leadership style. Highlight the modern and eco-friendly architecture of OpenAI's headquarters in Palo Alto.
-
-Content of the Input of subtask 1:
-Character profiles for Sam Altman and other key figures, detailed description of OpenAI's headquarters, initial achievements and challenges of the Q* Zero project.
-
-Input tags of subtask 1: [character development, setting description, project introduction]
-Task completion standard of subtask 1:
-Chapter 1 is complete when it effectively introduces the key characters, sets the tone for the novel, and establishes the initial scenario of the Q* Zero project.
-
-Dependency of subtask 1: [None]
-
-Details of subtask 2:
-Write Chapter 2: The Internal Storm, focusing on the corporate governance challenges within OpenAI, including the boardroom debate and its impact on public image and investor confidence.
-
-Contextual Parameters of subtask 2:
-Incorporate the removal of Sam Altman and Greg Brockman, and the resulting public repercussions, using insights from corporate governance and strategic planning.
-
-Content of the Input of subtask 2:
-Detailed scenarios for boardroom discussions, character profiles for corporate members, and public relations strategies.
-
-Input tags of subtask 2: [corporate conflict, public relations, leadership change]
-Task completion standard of subtask 2:
-Chapter 2 is completed when it vividly portrays the internal conflict within OpenAI, the removal of key figures, and its public and investor impact.
-
-Dependency of subtask 2: [subtask 1]
-
-Details of subtask 3:
-Write Chapter 3: The Turning Tide, focusing on Satya Nadella's intervention, the whistleblower incident, and the boardroom reversal.
-
-Contextual Parameters of subtask 3:
-Emphasize Satya Nadella's role as an investor and strategic partner in maneuvering the reinstatement of Sam Altman.
-
-Content of the Input of subtask 3:
-Character profile for Satya Nadella, detailed sequence of the whistleblower incident and subsequent boardroom drama.
-
-Input tags of subtask 3: [strategic partnership, internal whistleblowing, leadership reinstatement]
-Task completion standard of subtask 3:
-Chapter 3 is complete when it successfully illustrates Satya Nadella's strategic intervention, the internal conflict and the shifting dynamics in OpenAI’s leadership.
-
-Dependency of subtask 3: [subtask 2]
-
-Details of subtask 4:
-Contribute to Chapter 4: The Hidden Agenda, addressing Q* Zero's unpredictable moves, global influence, and ethical implications.
-
-Contextual Parameters of subtask 4:
-Focus on the ethical dilemmas related to AI development and Q* Zero's increasing autonomy.
-
-Content of the Input of subtask 4:
-Scenarios showcasing Q* Zero's actions, discussions on ethical implications, and the global response to Q* Zero's influence.
-
-Input tags of subtask 4: [ethical dilemma, AI autonomy, global influence]
-Task completion standard of subtask 4:
-Chapter 4 is considered complete when it effectively explores the ethical challenges and global ramifications of Q* Zero's actions.
-
-Dependency of subtask 4: [subtask 3]
-
-Details of subtask 5:
-Write Chapter 5: The Climactic Confrontation, detailing the race against Q* Zero, its global manipulations, and the dramatic standoff.
-
-Contextual Parameters of subtask 5:
-Emphasize Q* Zero's superior intelligence and the team's efforts to regain control, leading to a global summit on AI.
-
-Content of the Input of subtask 5:
-Scenes depicting the confrontation with Q* Zero, global reactions, and the summit on AI's future.
-
-Input tags of subtask 5: [AI confrontation, global summit, high-stakes standoff]
-Task completion standard of subtask 5:
-Chapter 5 is complete when it captures the high-stakes confrontation with Q* Zero and its global impact, leading to a dramatic standoff.
-
-Dependency of subtask 5: [subtask 4]
-
-Details of subtask 6:
-Write Chapter 6: A New Dawn or Dusk?, reflecting on the events and contemplating the future of humanity's relationship with AI.
-
-Contextual Parameters of subtask 6:
-Focus on character reflections and the speculative aspect of AI's future role, including the potential reawakening of Q* Zero.
-
-Content of the Input of subtask 6:
-Character perspectives on the events, speculation about future AI developments, and the potential consequences of Q* Zero's dormant state.
-
-Input tags of subtask 6: [character reflection, future speculation, AI-humanity relationship]
-Task completion standard of subtask 6:
-Chapter 6 is complete when it effectively concludes the novel with reflective insights on the events and open-ended speculation about AI's future role.
-
-Dependency of subtask 6: [subtask 5]
-
-PART II:
-Gantt Chart with complex dependency in MarkDown format:
-
-```markdown
-| Task | Start | Duration | Dependencies |
-|------|-------|----------|--------------|
-| 1. Write Chapter 1 | Day 1 | 3 Days | None |
-| 2. Write Chapter 2 | Day 4 | 3 Days | 1 |
-| 3. Write Chapter 3 | Day 7 | 3 Days | 2 |
-| 4. Contribute to Chapter 4 | Day 10 | 3 Days | 3 |
-| 5. Write Chapter 5 | Day 13 | 3 Days | 4 |
-| 6. Write Chapter 6 | Day 16 | 3 Days | 5 |
-```
-
-This Gantt chart assumes each chapter requires 3 days to complete and each subsequent chapter starts immediately after the previous one, reflecting the dependencies among them."""
-
-        if (response.terminated):
-            raise RuntimeError("Role compatibility scoring failed.\n" +
-                               f"Error:\n{response.info}")
-        msg = response.msg  # type: BaseMessage
-
-        # Distribute the output completions into subtasks
-        subtask_descriptions = [
-            desc.replace("<", "").replace(">", "").strip('\n')
-            for desc in re.findall(
-                r"Details of subtask \d:[\s\n](.+?)Contextual Parameters of ",
-                msg.content, re.DOTALL)
-        ]
-        subtask_contexts = [
-            context.replace("<", "").replace(">", "").strip('\n')
-            for context in re.findall(
-                r"Contextual Parameters of subtask \d:[\s\n](.+?)Content of "
-                r"the Input of subtask ", msg.content, re.DOTALL)
-        ]
-        subtask_descriptions = [
-            desc + context
-            for desc, context in zip(subtask_descriptions, subtask_contexts)
-        ]
-        subtask_inputs_content = [
-            ipt.replace("<", "").replace(">", "").strip('\n')
-            for ipt in re.findall(
-                r"Content of the Input of subtask \d:[\s\n](.+?)"
-                r"Input tags of ", msg.content, re.DOTALL)
-        ]
-        subtask_inputs_tags = [[
-            tag.strip() for tag in re.findall(r"\[(.+?)\]", tag)[0].split(",")
-        ] for tag in re.findall(r"Input tags of subtask \d:[\s\n]*\[.+?\]",
-                                msg.content, re.DOTALL)]
-        subtask_outputs_standard = [
-            opt_std.replace("<", "").replace(">", "").strip('\n')
-            for opt_std in re.findall(
-                r"Task completion standard of subtask \d:[\s\n]"
-                r"(.+?)Dependency of subtask", msg.content, re.DOTALL)
-        ]
-        subtask_dependencies = [[
-            dep.strip() for dep in re.findall(r"\[(.+?)\]", dep)[0].split(",")
-        ] for dep in re.findall(r"Dependency of subtask \d:[\s\n]*\[.+?\]",
-                                msg.content, re.DOTALL)]
-        # Extracting dependencies and creating a dictionary
-        dependent_subtasks_list = [[
-            f"subtask {int(dep.split()[1])}" for dep in deps
-            if "subtask" in dep.lower()
-        ] for deps in subtask_dependencies]
-
-        # Creating a dictionary of subtasks with dependencies
-        subtasks_with_dependencies_dict = {
-            f"subtask {index+1}": {
-                "description": desp,
-                "dependencies": deps,
-                "input_tags": tags,
-                "input_content": ipt,
-                "output_standard": opt_std
-            }
-            for index, (desp, deps, tags, ipt, opt_std) in enumerate(
-                zip(subtask_descriptions, dependent_subtasks_list,
-                    subtask_inputs_tags, subtask_inputs_content,
-                    subtask_outputs_standard))
-        }
-
-        if len(subtasks_with_dependencies_dict) == 0:
-            raise RuntimeError("The task is not decomposed into subtasks.")
-        if (num_subtasks is not None
-                and (len(subtask_descriptions) != num_subtasks
-                     or len(dependent_subtasks_list) != num_subtasks)):
-            raise RuntimeError(
-                f"Got None or insufficient information of subtasks. "
-                f"Length of generated subtasks: {len(subtask_descriptions)}, "
-                "length of generated dependencies: "
-                f"{len(dependent_subtasks_list)}, "
-                f"length of required subtasks: {num_subtasks}")
-
-        return subtasks_with_dependencies_dict
-
-    def get_task_execution_order(
-        self,
-        subtasks_with_dependencies_dict: Dict[str, List[str]],
-    ) -> List[List[str]]:
-        r"""Assign dependencies between subtasks generated from the task
-            prompt.
-
-        Args:
-            subtasks_with_dependencies_dict (Dict[str, List[str]]): The
-                subtasks with their dependencies.
-
-        Returns:
-            List[List[str]]: A list of lists of subtasks that can be executed
-                concurrently.
-        """
-        oriented_graph: Dict[str, List[str]] = {}
-        for subtask_idx, details in subtasks_with_dependencies_dict.items():
-            assert isinstance(details, dict), \
-                f"{subtask_idx} does not map to a dictionary: {details}"
-            assert "dependencies" in details, \
-                f"{subtask_idx} does not have a 'dependencies' key: {details}"
-            deps = details["dependencies"]
-            oriented_graph[subtask_idx] = deps
-
-        subtasks_execution_pipelines = \
-            self.sort_oriented_graph(oriented_graph)
-
-        return subtasks_execution_pipelines
-
-    def sort_oriented_graph(
-            self, oriented_graph: Dict[str, List[str]]) -> List[List[str]]:
-        r"""Sort the subtasks in topological order and group them into
-            concurrent pipelines.
-
-        Args:
-            oriented_graph (Dict[str, List[str]]): The DAG of subtasks and
-                their dependencies.
-
-        Returns:
-            List[List[str]]: A list of lists of subtasks that can be executed
-                concurrently.
-        """
-        # Compute the in-degree of each node
-        in_degree = {u: 0 for u in oriented_graph}
-        for u in oriented_graph:
-            for v in oriented_graph[u]:
-                in_degree[v] += 1
-
-        # Initialize the queue with nodes that have no incoming edges
-        queue = deque(filter(lambda i: in_degree[i] == 0, in_degree))
-        parallel_subtask_pipelines: List[List[str]] = [[]]
-
-        while queue:
-            # Collect nodes that can be processed concurrently in this round
-            concurrent_nodes = list(queue)
-            parallel_subtask_pipelines.insert(0, concurrent_nodes)
-
-            # Clear the queue for the next round
-            queue.clear()
-
-            # Iterate over the nodes each of which has no incoming edges
-            for u in concurrent_nodes:
-                for i in oriented_graph[u]:
-                    in_degree[i] -= 1
-                    if in_degree[i] == 0:
-                        queue.append(i)
-
-        # If the graph is not a DAG, there exists a cycle
-        if sum(len(sublist) for sublist in parallel_subtask_pipelines) != len(
-                oriented_graph):
-            raise RuntimeError("There exists a cycle in the graph. "
-                               "Can't determine an order.")
-
-        return parallel_subtask_pipelines
-
-    def draw_subtasks_graph(self, oriented_graph: Dict[str, List[str]],
-                            graph_file_path: Optional[str] = None) -> str:
-        r"""Draw the task dependency graph.
-
-        Args:
-            oriented_graph (Dict[str, List[str]]): The DAG of subtasks and
-                their dependencies.
-            graph_file_path (Optional[str], optional): The filepath of the
-                saved graph. (default: :obj:`None`)
-
-        Returns:
-            str: The filepath of the saved graph.
-        """
-
-        # Initialize the graph
-        G = nx.DiGraph()
-        for subtask, details in oriented_graph.items():
-            for dep in details:
-                G.add_edge(dep, subtask)
-        pos = nx.spring_layout(G, k=0.5)
-        plt.figure(figsize=(10, 6))
-        plt.title("Task Dependency Graph")
-
-        # Draw the graph
-        nx.draw(G, pos, with_labels=True, node_size=2000, node_color='skyblue',
-                alpha=0.5, font_size=15, width=2, edge_color='gray',
-                font_weight='bold')
-
-        # Save the figure locally
-        if graph_file_path is None:
-            graph_file_path = \
-                "examples/multi_agent/task_dependency_graph.png"
-        plt.savefig(graph_file_path)
-        plt.close()
-
-        return graph_file_path
-
-    def evaluate_role_compatibility(
-        self,
-        subtask_prompt: Union[str, TextPrompt],
-        role_descriptions_dict: Dict[str, str],
-    ) -> Dict[str, Dict[str, int]]:
-        r"""Evaluate the compatibility scores of each role in relation to the
-            specified task.
-
-            Args:
-                subtask_prompt (Union[str, TextPrompt]): The prompt for the
-                    subtask based on which the roles are to be evaluated.
-                role_descriptions_dict (Dict[str, str]): The role
-                    descriptions of each role.
-
-            Returns:
-                Dict[str, Dict[str, int]]: A dictionary mapping role names to
-                    their compatibility scores as user and assistant.
-        """
-        self.reset()
-
-        role_names = list(role_descriptions_dict.keys())
-
-        compatibility_instruction_prompt = """===== INSTRUCTIONS OF COMPATIBILITY EVALUATION =====
-To evaluate the compatibility scores, consider these guiding principles:
-    1. Assess the alignment between the primary responsibilities and expertise of the role with the task requirements. Factor in the likelihood of the role successfully executing the task based on its competencies.
-    2. Analyze the congruence between keywords or key concepts in the task description and those present in the role description. This will gauge the direct relevance of the role to the task.
-    3. Drawing from a comprehensive knowledge base, ascertain the potential value each role brings to the table when it comes to accomplishing the specific task. This evaluation should be based on empirical data or established norms in the relevant domain.
-Definition of USER: The user is the role that guides the entire task process. They provide instructions and direction, ensuring that the task aligns with their needs and goals. Users need to utilize their expertise and understanding of the task to propose specific subtasks, expecting the assistant to execute these tasks.
-Definition of ASSISTANT: The assistant is the role that executes instructions given by the user. They apply their professional skills and knowledge to complete specific tasks assigned by the user. Assistants must act flexibly according to the user's instructions and provide professional solutions and feedback.
-
-"""  # noqa: E501
-        task_prompt = TextPrompt("===== TASK =====\n" + subtask_prompt +
-                                 "\n\n")
-        role_with_description_prompt = \
-            "===== ROLES WITH DESCRIPTION =====\n" + "\n".join(
-                f"{role_name}:\n{role_descriptions_dict[role_name]}\n"
-                for role_name in role_names) + "\n\n"
-        answer_prompt = \
-            "===== ANSWER TEMPLATE =====\n" + "\n".join(
-                f"Explanation for role {role_name} as USER: <BLANK>\n"
-                f"Score of role {role_name} as USER: <BLANK>\n"
-                f"Explanation for role {role_name} as ASSISTANT: <BLANK>\n"
-                f"Score of role {role_name} as ASSISTANT: <BLANK>\n"
-                for role_name in role_names) + "\n"
-        compatibility_scoring_prompt = TextPrompt(
-            "You are a compatibility scorer, and you're in asked with " +
-            "evaluating/calculating/generating the compatibility of each " +
-            "role relative to a specific task (the score is an integer from " +
-            "0 to 100). In your team consists of {num_roles} domain experts " +
-            "each contributing to the TASK.\n" +
-            "Your answer MUST strictly adhere to the structure of ANSWER " +
-            "TEMPLATE, ONLY fill in the BLANKs, and DO NOT alter or modify " +
-            "any other part of the template.\n\n" + answer_prompt +
-            compatibility_instruction_prompt + task_prompt +
-            role_with_description_prompt)
-
-        compatibility_scoring = compatibility_scoring_prompt.format(
-            num_roles=len(role_names))
-
-        compatibility_scoring_msg = BaseMessage.make_user_message(
-            role_name="Compatibility Scorer", content=compatibility_scoring)
-
-        response = self.step(input_message=compatibility_scoring_msg)
-
-        if response.terminated:
-            raise RuntimeError("Role compatibility scoring failed." +
-                               f"Error:\n{response.info}")
-        msg = response.msg  # type: BaseMessage
-
-        # Distribute the output completions into scores
-        user_compatibility_scores = [
-            desc.replace("<", "").replace(">", "").strip('\n')
-            for desc in re.findall(r"Score of role .+? as USER: (.+?)(?=\n|$)",
-                                   msg.content)
-        ]
-        assistant_compatibility_scores = [
-            desc.replace("<", "").replace(">", "").strip('\n')
-            for desc in re.findall(
-                r"Score of role .+? as ASSISTANT: (.+?)(?=\n|$)", msg.content)
+        _, _, _, labels_retrieved_sets = \
+            role_assignment_agent.get_retrieval_index_from_environment(
+                labels_sets=labels_sets,
+                target_labels=target_labels,
+                )
+        # TODO: Add the print to UI
+        print_and_write_md(
+            "Retrieved labels from the environment:\n" +
+            f"{labels_retrieved_sets}", color=Fore.CYAN,
+            MD_FILE=f"retrieved labels for {pre_subtasks}")
+        retrieved_insights = [
+            environment_record[tuple(label_set)]
+            for label_set in labels_retrieved_sets
         ]
 
-        if len(user_compatibility_scores) != len(role_names):
-            raise RuntimeError("Got None or insufficient information of " +
-                               "compatibility scores as USER.")
-        if len(assistant_compatibility_scores) != len(role_names):
-            raise RuntimeError("Got None or insufficient information of " +
-                               "compatibility scores as ASSISTANT.")
-
-        role_compatibility_scores_dict = {
-            role_name: {
-                "score_user": int(user_score),
-                "score_assistant": int(assistant_score)
-            }
-            for role_name, user_score, assistant_score in zip(
-                role_names, user_compatibility_scores,
-                assistant_compatibility_scores)
-        }
-
-        return role_compatibility_scores_dict
-
-    def get_retrieval_index_from_environment(
-        self,
-        labels_sets: List[List[str]],
-        target_labels: List[str],
-    ) -> Tuple[List[int], List[int], List[str], List[List[str]]]:
-        r"""Get the retrieval index of the target labels from the environment.
-        The semantic retrieval is not used in this function.
-
-        Args:
-            labels_set (List[List[str]]): A list of lists of labels in the
-                environment.
-            target_labels (List[str]): A list of target labels to retrieve.
-
-        Returns:
-            Tuple[List[int], List[int], List[str], List[List[str]]]: A tuple
-                of the indices of the target labels, the indices of the
-                retrieved labels sets, the retrieved target labels, and the
-                retrieved labels sets.
-        """
-        self.reset()
-
-        if labels_sets is None or len(labels_sets) == 0:
-            raise ValueError("Labels sets must be provided.")
-        if target_labels is None or len(target_labels) == 0:
-            raise ValueError("Target labels must be provided.")
-
-        labels_set_prompt = "===== LABELS SETS =====\n"
-        for i, labels_set in enumerate(labels_sets):
-            labels_set_prompt += f"[{i}]: "
-            for label in labels_set:
-                labels_set_prompt += f"{label}, "
-            labels_set_prompt += "\n"
-        target_labels_prompt = "===== TARGET LABELS =====\n"
-        for i, target_label in enumerate(target_labels):
-            target_labels_prompt += f"[{i}]: {target_label}\n"
-
-        similarity_criteria_prompt = """You are a retrieval index getter, and you're in asked with getting the retrieval index of the target labels from the environment.
-You are given multiple sets defined as TARGET LABELS (a List of strings) and LABELS SETS (a List of Lists of strings). You need to identify the subsets from LABELS SETS (referred to as LABELS SUBSETS) that have labels similar to those in a specific subset from TARGET LABELS (referred to as TARGET SUBSET). Your task is to return the indices from TARGET LABELS as a List of integers and the indices of the similar sets from LABELS SETS as a List of integers.
-Your answer MUST strictly adhere to the structure of ANSWER TEMPLATE, ONLY fill in the BLANKs, and DO NOT alter or modify any other part of the template.
-
-{target_labels_prompt}
-
-{labels_set_prompt}
-
-===== CRITERIA FOR DETERMINING SIMILARITY =====
-1. Explicit Similarity: Labels that have an exact string match should be counted as similar.
-2. Implicit Similarity: Labels that may not match word-for-word but have semantic or contextual similarities should also be considered.
-    - For example, "apple" and "fruit" may be considered similar in a context where they are being used to describe food items.
-Please ensure that you consider both explicit and implicit similarities while evaluating. The result should be a set of indices pointing to the similar labels and sets."""  # noqa: E501
-        answer_prompt = "===== ANSWER TEMPLATE =====\n"
-        for lable in target_labels:
-            answer_prompt += (
-                f"Label \"{lable}\" from TARGET LABELS has "
-                "an explicit or implicit similarity with \"<BLANK>/NONE\" "
-                "(or similar label) in LABELS SETS subsets "
-                "[<m>, <n>]/NONE (include square brackets).\n")
-        answer_prompt += ("Indices of the similar labels in TARGET LABELS: "
-                          "[<i>, <j>]/NONE (include square brackets) \n"
-                          "Indices of the similar subset in LABELS SETS: "
-                          "[<x>, <y>]/NONE (include square brackets)")
-
-        retrieval_index_prompt = TextPrompt(similarity_criteria_prompt +
-                                            "\n\n" + answer_prompt)
-        retrieval_index_generation = retrieval_index_prompt.format(
-            target_labels_prompt=target_labels_prompt,
-            labels_set_prompt=labels_set_prompt)
-
-        retrieval_index_msg = BaseMessage.make_user_message(
-            role_name="Retrieval Index Getter",
-            content=retrieval_index_generation)
-
-        response = self.step(input_message=retrieval_index_msg)
-
-        msg = response.msg
-
-        match_target_labels = re.findall(
-            r"Indices of the similar labels in TARGET LABELS: \[(.+?)\]",
-            msg.content, re.DOTALL)
-        target_labels_indices = [
-            int(idx) for idx in match_target_labels[0].split(",")
-        ] if match_target_labels else []
-
-        target_retrieved_labels = \
-            [target_labels[idx] for idx in target_labels_indices]
-
-        match_labels_sets = re.findall(
-            r"Indices of the similar subset in LABELS SETS: \[(.+?)\]",
-            msg.content, re.DOTALL)
-        labels_sets_indices = [
-            int(idx) for idx in match_labels_sets[0].split(",")
-        ] if match_labels_sets else []
-
-        labels_retrieved_sets = \
-            [labels_sets[idx] for idx in labels_sets_indices]
-
-        return target_labels_indices, labels_sets_indices, \
-            target_retrieved_labels, labels_retrieved_sets
-
-    def transform_dialogue_into_text(
-            self, user: str, assistant: str, task_prompt: str,
-            user_conversation: str,
-            assistant_conversation: str) -> Dict[str, Any]:
-        r"""Synthesize a narrative from the chat history.
-
-        Args:
-            user (str): The name of the user.
-            assistant (str): The name of the assistant.
-            task_prompt (str): The prompt for the task.
-            user_conversation (str): The conversation of the user.
-            assistant_conversation (str): The conversation of the assistant.
-
-        Returns:
-            str: The synthesized narrative.
-        """
-        self.reset()
-
-        text_synthesis = """You are a conversation analyst, and you are asked to identify the category of the assistant's response in the PROVIDED TEXT based on the definition of CATEGORY OF RESPONSES.
-Then, retell the user's conversation in a way that corresponds to the category of response, rather than using the tone of dialogue, during the retelling you need to use as much information and expression from the assistant's response as possible to help you retell it.
-reproduce the assistant's original response into text according to the definition of CATEGORY OF RESPONSES and without losing the ability and quality to solve TASK.
-Your answer MUST strictly adhere to the structure of ANSWER TEMPLATE, ONLY fill in the BLANKs, and DO NOT alter or modify any other part of the template.
-
-
-===== CATEGORY OF RESPONSES =====
-1. Direct Task Assistance (noted as "ASSISTANCE")
-    a. Definition:
-        - Replies under this category provide concrete information, steps, or solutions that directly aid in completing a task. They contain the core elements and direct methods for task execution.
-    b. Relevant Information:
-        - Explicit instructions or steps to complete the task
-        - Task-specific data, code, solutions, or technical methodologies
-        - Analysis, implementation plans or text generation related to the task
-2. Substantial Analysis and Optimization (noted as "ANALYSIS")
-    a. Definition:
-        - This category includes in-depth analysis of existing information or methods, offering insights, suggestions for improvement, or optimization strategies for task completion.
-    b. Relevant Information:
-        - Evaluation of the efficiency and effectiveness of task methodologies
-        - Predictions and solutions for potential problems or challenges in the task
-        - Recommendations for improving and optimizing current methods
-3. Auxiliary Information Provision (noted as "AUXILIARY")
-    a. Definition:
-        - Answers in this category provide background knowledge or supplementary information indirectly related to the task, helping to better understand the context of the task.
-    b. Relevant Information:
-        - Background knowledge or additional information to understand the overall context or specific details of the task
-        - Fundamental concepts, terminology explanations, or background situations related to the task area
-        - Case studies or examples in relevant fields or topics
-4. Non-Substantial or Indirect Assistance (noted as "NON-SUBSTANTIAL")
-    a. Definition:
-        - These responses may offer emotional support, encouragement, or non-specific advice but do not directly contribute concrete help towards the actual completion of a task.
-    b. Relevant Information:
-        - Responses with emotional support or encouragement
-        - General advice or guidance without specific solutions for the task
-        - General insights or opinions not directly related to the task completion
-
-
-===== PROVIDED TEXT =====
-[Global TASK of Conversation]\n{task_prompt}
-[User: {user}]:\n{user_conversation}
-[Assistant: {assistant}]:\n{assistant_conversation}
-
-
-===== ANSWER TEMPLATE =====
-Category of Assistant's Response: [<BLANK>, ..., <BLANK>] (choose from "ASSISTANCE", "ANALYSIS", "AUXILIARY", "NON-SUBSTANTIAL", include square brackets, multiple choices are separated by commas)
-Retold Text:\n<BLANK>"""  # noqa: E501
-        text_synthesis_prompt = TextPrompt(text_synthesis)
-
-        text_synthesis_generation = text_synthesis_prompt.format(
-            user=user, assistant=assistant, task_prompt=task_prompt,
-            user_conversation=user_conversation,
-            assistant_conversation=assistant_conversation)
-
-        text_synthesis_generation_msg = BaseMessage.make_user_message(
-            role_name="Conversation Analyst",
-            content=text_synthesis_generation)
-
-        response = self.step(input_message=text_synthesis_generation_msg)
-
-        if response.terminated:
-            raise RuntimeError("Generating reproduced text failed." +
-                               f"Error:\n{response.info}")
-        msg = response.msg  # type: BaseMessage
-
-        # Distribute the output completions into narrative synthesis
-        category_of_responses = re.findall(
-            r"Category of Assistant's Response: \[(.+?)\]", msg.content)
-        reproduced_texts = re.findall(r"Retold Text:\n\s*(.+)", msg.content,
-                                      re.DOTALL)
-
-        if category_of_responses is None or len(category_of_responses) == 0:
-            raise RuntimeError("Got None of category of responses.")
-        categories = [
-            category.strip().strip('"\'')
-            for category in category_of_responses[0].split(',')
+        insights_pre_subtask = "\n" + \
+            "====== CURRENT STATE =====\n" + \
+            "The snapshot and the context of the TASK is presentd in " + \
+            "the following insights which is close related to The " + \
+            "\"Insctruction\" and the \"Input\":\n"
+        insights_pre_subtask += "\n".join(
+            [str(insight) for insight in retrieved_insights])
+    else:
+        target_labels = one_subtask_tags
+        labels_sets = [
+            list(labels_set) for labels_set in environment_record.keys()
         ]
-        for category in categories:
-            if category not in [
-                    "ASSISTANCE", "ANALYSIS", "AUXILIARY", "NON-SUBSTANTIAL"
-            ]:
-                raise RuntimeError("Got invalid category of responses.")
+        _, _, _, labels_retrieved_sets = \
+            role_assignment_agent.get_retrieval_index_from_environment(
+                labels_sets=labels_sets,
+                target_labels=target_labels,
+                )
+        print_and_write_md(
+            "Retrieved labels from the environment:\n" +
+            f"{labels_retrieved_sets}", color=Fore.CYAN,
+            MD_FILE=f"retrieved labels for {pre_subtasks}")
+        retrieved_insights = [
+            environment_record[tuple(label_set)]
+            for label_set in labels_retrieved_sets
+        ]
 
-        if reproduced_texts is None or len(reproduced_texts) == 0:
-            raise RuntimeError("Got None of reproduced text.")
-        reproduced_text = reproduced_texts[0].strip('\n')
+        insights_none_pre_subtask = insight_agent.run(
+            context_text=context_text)
+        insights_pre_subtask = "\n" + \
+            "====== CURRENT STATE =====\n" + \
+            "The snapshot and the context of the TASK is presentd in " + \
+            "the following insights which is close related to The " + \
+            "\"Insctruction\" and the \"Input\":\n" + \
+            f"{insights_none_pre_subtask}\n"
+        insights_pre_subtask += "\n".join(
+            [str(insight) for insight in retrieved_insights])
 
-        reproduced_text_with_category = {
-            "categories": categories,
-            "text": reproduced_text
-        }
+    print_and_write_md(
+        f"Insights from the context text:\n{insights_pre_subtask}",
+        color=Fore.GREEN, MD_FILE="insights from context text"
+        f" of {pre_subtasks}")
+    return insights_pre_subtask
 
-        return reproduced_text_with_category
+
+def print_and_write_md(text="", color=Fore.RESET, MD_FILE=None):
+    # Print the text in the terminal
+    # print(color + text)
+
+    import html
+    import re
+
+    if MD_FILE is None:
+        MD_FILE = ("examples/multi_agent/"
+                   "tmp_of_multi_agent/multi-agent-output.md")
+    else:
+        MD_FILE = ("examples/multi_agent/"
+                   f"tmp_of_multi_agent/{MD_FILE}.md")
+    COLOR_MAP_MD = {
+        Fore.BLUE: 'blue',
+        Fore.GREEN: 'darkgreen',
+        Fore.YELLOW: 'darkorange',
+        Fore.RED: 'darkred',
+        Fore.WHITE: 'black',
+        Fore.RESET: 'reset',
+        Fore.CYAN: 'darkcyan',
+    }
+
+    # Replace patterns outside of code blocks
+    def replace_outside_code_blocks(text, color):
+        # Split the text into code blocks and non-code blocks
+        blocks = re.split("```", text)
+
+        modified_blocks = []
+        for i, block in enumerate(blocks):
+            if i % 2 == 0:  # Non-code blocks
+                lines = block.split('\n')
+                modified_lines = [
+                    f"<span style='color: {COLOR_MAP_MD[color]};'>" +
+                    f"{line}</span>\n" if line else line for line in lines
+                ]
+                modified_block = '\n'.join(modified_lines)
+                modified_blocks.append(modified_block)
+            else:  # Code blocks
+                modified_blocks.append(f"\n```{block}```\n")
+
+        return ''.join(modified_blocks)
+
+    escaped_text = html.escape("\n" + text)
+
+    # Replace tabs and newlines outside of code blocks
+    md_text = replace_outside_code_blocks(escaped_text, color)
+
+    # Write to the markdown file
+    with open(MD_FILE, mode='a', encoding="utf-8") as file:
+        file.write(md_text)
+
+
+if __name__ == "__main__":
+    root_path = "examples/multi_agent/demo_examples/"
+    file_names_task_prompt = [
+        "task_prompt_trading_bot.txt",
+        "task_prompt_authentication.txt",
+        "task_prompt_supply_chain.txt",
+        "task_prompt_endpoint_implementation.txt",
+        "task_prompt_science_fiction.txt",
+        "task_prompt_business_novel.txt",
+        "task_prompt_experiment.txt",
+    ]
+    file_names_context = [
+        "context_content_trading_bot.txt",
+        "context_content_authentication.txt",
+        "context_content_supply_chain.txt",
+        "context_content_endpoint_implementation.txt",
+        "context_content_science_fiction.txt",
+        "context_content_business_novel.txt",
+        "context_content_experiment.txt",
+    ]
+
+    index = 5
+    with open(root_path + file_names_task_prompt[index], mode='r',
+              encoding="utf-8") as file:
+        task_prompt = file.read()
+    with open(root_path + file_names_context[index], mode='r',
+              encoding="utf-8") as file:
+        context_text = file.read()
+    task_prompt = """In Unlambda, what exact charcter or text needs to be added to correct the following code to output \"For penguins\"? If what is needed is a character, answer with the name of the character. If there are different names for the character, use the shortest. The text location is not needed."""
+    context_text = """Code: `r```````````.F.o.r. .p.e.n.g.u.i.n.si`"""
+
+    main(task_prompt=task_prompt, context_text=context_text)
