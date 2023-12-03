@@ -11,7 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
-import json, re
+import json
+import re
 
 from colorama import Fore
 
@@ -428,7 +429,5 @@ if __name__ == "__main__":
     with open(root_path + file_names_context[index], mode='r',
               encoding="utf-8") as file:
         context_text = file.read()
-    task_prompt = """In Unlambda, what exact charcter or text needs to be added to correct the following code to output \"For penguins\"? If what is needed is a character, answer with the name of the character. If there are different names for the character, use the shortest. The text location is not needed."""
-    context_text = """Code: `r```````````.F.o.r. .p.e.n.g.u.i.n.si`"""
 
     main(task_prompt=task_prompt, context_text=context_text)
