@@ -17,14 +17,15 @@ import re
 from colorama import Fore
 
 from camel.agents.deductive_reasoner_agent import DeductiveReasonerAgent
+from camel.functions import MATH_FUNCS, SEARCH_FUNCS
 from camel.agents.insight_agent import InsightAgent
 from camel.agents.role_assignment_agent import RoleAssignmentAgent
-from camel.configs import ChatGPTConfig
+from camel.configs import ChatGPTConfig, FunctionCallingConfig
 from camel.societies import RolePlaying
 from camel.types import ModelType, TaskType
 
 
-def main(model_type=ModelType.GPT_4_TURBO, task_prompt=None,
+def main(model_type=ModelType.GPT_4, task_prompt=None,
          context_text=None) -> None:
     # Start the multi-agent communication
     print_and_write_md("========================================",
@@ -52,14 +53,14 @@ def main(model_type=ModelType.GPT_4_TURBO, task_prompt=None,
     # Generate role with descriptions
     role_descriptions_dict = \
         role_assignment_agent.run_role_with_description(
-            task_prompt=task_prompt, num_roles=4, role_names=None)
+            task_prompt=task_prompt, num_roles=1, role_names=None)
 
     # Split the original task into subtasks
     subtasks_with_dependencies_dict = \
         role_assignment_agent.split_tasks(
             task_prompt=task_prompt,
             role_descriptions_dict=role_descriptions_dict,
-            num_subtasks=None,
+            num_subtasks=1,
             context_text=context_text)
     oriented_graph = {}
     for subtask_idx, details in subtasks_with_dependencies_dict.items():
@@ -174,9 +175,26 @@ def main(model_type=ModelType.GPT_4_TURBO, task_prompt=None,
             subtasks_with_dependencies_dict[ID_one_subtask]["input_content"] +
             "\n- Output Standard for the completion of TASK:\n" +
             subtasks_with_dependencies_dict[ID_one_subtask]["output_standard"])
+
+        function_list = [*MATH_FUNCS, *SEARCH_FUNCS]
+        assistant_model_config = FunctionCallingConfig.from_openai_function_list(
+            function_list=function_list,
+            kwargs=dict(temperature=0.0),
+        )
+        user_model_config = ChatGPTConfig(temperature=0.0)
+
         role_play_session = RolePlaying(
             assistant_role_name=ai_assistant_role,
             user_role_name=ai_user_role,
+            assistant_agent_kwargs=dict(
+                model_type=model_type,
+                model_config=assistant_model_config,
+                function_list=function_list,
+            ),
+            user_agent_kwargs=dict(
+                model_type=model_type,
+                model_config=user_model_config,
+            ),
             task_prompt=task_with_IO,
             model_type=model_type,
             task_type=TaskType.
@@ -225,6 +243,19 @@ def main(model_type=ModelType.GPT_4_TURBO, task_prompt=None,
             if "ASSISTANCE" in transformed_text_with_category["categories"]:
                 transformed_text = transformed_text_with_category["text"]
                 chat_history_two_roles += (transformed_text + "\n\n")
+
+            code_snippet = re.findall(
+                r"assistant to=code_interpreter,"
+                r"\s*(\w+)\n(.*?)\n"
+                r"assistant end=code_interpreter",
+                assistant_response.msg.content, re.DOTALL)
+            # Print the code snippet
+            for language, code_snippet in code_snippet:
+                print(f"Programming language: {language}")
+                print(f"code_snippet:\n{code_snippet}\n")
+            
+            print(Fore.BLUE + f"AI User:\n{user_response.msg.content}\n")
+            print(Fore.GREEN + f"AI Assistant:\n{assistant_response.msg.content}\n")
 
             if assistant_response.terminated:
                 print(Fore.GREEN +
@@ -422,12 +453,14 @@ if __name__ == "__main__":
         "context_content_experiment.txt",
     ]
 
-    index = 5
+    index = 3
     with open(root_path + file_names_task_prompt[index], mode='r',
               encoding="utf-8") as file:
         task_prompt = file.read()
     with open(root_path + file_names_context[index], mode='r',
               encoding="utf-8") as file:
         context_text = file.read()
+    task_prompt = "Find out the big things are happening in 2023? Answer from Google Search."
+    context_text = "Now is 2023. Search engine is Google Search."
 
     main(task_prompt=task_prompt, context_text=context_text)
