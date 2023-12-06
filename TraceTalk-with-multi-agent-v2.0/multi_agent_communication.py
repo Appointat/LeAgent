@@ -25,7 +25,7 @@ from camel.societies import RolePlaying
 from camel.types import ModelType, TaskType
 
 
-def main(model_type=ModelType.GPT_4, task_prompt=None,
+def main(model_type=ModelType.GPT_4_TURBO, task_prompt=None,
          context_text=None) -> None:
     # Start the multi-agent communication
     print_and_write_md("========================================",
@@ -60,7 +60,7 @@ def main(model_type=ModelType.GPT_4, task_prompt=None,
         role_assignment_agent.split_tasks(
             task_prompt=task_prompt,
             role_descriptions_dict=role_descriptions_dict,
-            num_subtasks=1,
+            num_subtasks=None,
             context_text=context_text)
     oriented_graph = {}
     for subtask_idx, details in subtasks_with_dependencies_dict.items():
@@ -181,7 +181,10 @@ def main(model_type=ModelType.GPT_4, task_prompt=None,
             function_list=function_list,
             kwargs=dict(temperature=0.0),
         )
-        user_model_config = ChatGPTConfig(temperature=0.0)
+        user_model_config = FunctionCallingConfig.from_openai_function_list(
+            function_list=function_list,
+            kwargs=dict(temperature=0.0),
+        )
 
         role_play_session = RolePlaying(
             assistant_role_name=ai_assistant_role,
@@ -194,6 +197,7 @@ def main(model_type=ModelType.GPT_4, task_prompt=None,
             user_agent_kwargs=dict(
                 model_type=model_type,
                 model_config=user_model_config,
+                function_list=function_list,
             ),
             task_prompt=task_with_IO,
             model_type=model_type,
@@ -460,7 +464,7 @@ if __name__ == "__main__":
     with open(root_path + file_names_context[index], mode='r',
               encoding="utf-8") as file:
         context_text = file.read()
-    task_prompt = "Find out the big things are happening in 2023? Answer from Google Search."
-    context_text = "Now is 2023. Search engine is Google Search."
+    task_prompt = "Identify the current trending technologies in the software industry as of the latest year (2023) by summarizing the top five mentioned in recent articles found through Google search."
+    context_text = "Identify the current trending technologies in the software industry as of the latest year (2023) by summarizing the top five mentioned in recent articles found through Google search."
 
     main(task_prompt=task_prompt, context_text=context_text)
