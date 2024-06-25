@@ -1,6 +1,0 @@
-[submodule "chatbot-ui"]
-	path = chatbot-ui
-	url = https://github.com/Appointat/chatbot-ui.git
-[submodule "chat-ui"]
-	path = chat-ui
-	url = https://github.com/huggingface/chat-ui
