@@ -22,6 +22,10 @@ The name "LeAgent" combines the French article "Le" with "Agent," symbolizing a 
 - Advanced Natural Language Understanding (NLU) for intent recognition
 - Efficient data structures for memory management and quick retrieval
 
+![****[What is vector search?](https://www.elastic.co/cn/what-is/vector-search)****](https://user-images.githubusercontent.com/65004114/226753565-e2230d59-5750-4d77-840f-4f777441a4dc.png)
+
+![Framework of TraceTalk](https://github.com/Appointat/Chat-with-Document-s-using-ChatGPT-API-and-Text-Embedding/assets/65004114/78a1b834-41cf-4ddc-bae3-26398ce53bb8)
+
 ## Getting Started
 
 ### Prerequisites
