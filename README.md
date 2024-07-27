@@ -1,5 +1,7 @@
 # LeAgent: Your Adaptive AI Companion
 
+### Note: My dear developers and users, this project was established in March 2023. At that time, the concept of RAG had not yet become widespread. However, I've recently come up with new ideas and plan to work on a project involving a learning RAG+agent (the ultimate goal is to realize an AI like Iron Man's Jarvis). Thanks! Please give me a few months to restructure this project. Thank you for your support. As a professional developer and algorithm engineer, I promise not to let you down. The vision is as follows:
+
 ## Overview
 
 LeAgent is an innovative AI assistant designed to grow and adapt alongside its user, creating a unique and evolving relationship. Inspired by AI assistants in science fiction, such as J.A.R.V.I.S. or Friday from the Iron Man films, LeAgent aims to bridge the gap between static, pre-programmed assistants and truly personalized AI companions.
